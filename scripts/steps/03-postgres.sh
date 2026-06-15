@@ -157,19 +157,38 @@ validate_postgres_basic() {
 show_postgres_info() {
     source "$APP_DIR/.env"
 
+    local HOST_IP
+    local STATUS
+
+    HOST_IP=$(hostname -I | awk '{print $1}')
+    STATUS=$(docker inspect -f '{{.State.Status}}' "$POSTGRES_CONTAINER_NAME" 2>/dev/null || echo "desconhecido")
+
     echo
-    echo "========================================"
-    echo " PostgreSQL instalado"
-    echo "========================================"
-    echo "Container : $POSTGRES_CONTAINER_NAME"
-    echo "Imagem    : $POSTGRES_IMAGE"
-    echo "Banco     : $POSTGRES_DB"
-    echo "Usuário   : $POSTGRES_USER"
-    echo "Senha     : $POSTGRES_PASSWORD"
-    echo "Porta     : $POSTGRES_PORT"
-    echo "Dados     : $APP_DIR/postgres/data"
-    echo "========================================"
+    echo "============================================================"
+    echo " PostgreSQL instalado com sucesso"
+    echo "============================================================"
+    printf "%-20s %s\n" "Container:" "$POSTGRES_CONTAINER_NAME"
+    printf "%-20s %s\n" "Imagem:" "$POSTGRES_IMAGE"
+    printf "%-20s %s\n" "Status:" "$STATUS"
+
     echo
+    echo "============================================================"
+    echo " Dados para conexão (DBeaver)"
+    echo "============================================================"
+    printf "%-20s %s\n" "Host:" "$HOST_IP"
+    printf "%-20s %s\n" "Porta:" "$POSTGRES_PORT"
+    printf "%-20s %s\n" "Database:" "$POSTGRES_DB"
+    printf "%-20s %s\n" "Usuário:" "$POSTGRES_USER"
+    printf "%-20s %s\n" "Senha:" "$POSTGRES_PASSWORD"
+
+    echo
+    echo "============================================================"
+    echo " Persistência dos dados"
+    echo "============================================================"
+    printf "%-20s %s\n" "Diretório:" "$APP_DIR/postgres/data"
+
+    echo
+    echo "============================================================"
 }
 
 setup_postgres() {
@@ -179,5 +198,4 @@ setup_postgres() {
     start_postgres
     wait_postgres
     validate_postgres_basic
-    show_postgres_info
 }
