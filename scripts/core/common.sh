@@ -25,7 +25,7 @@ BACKUP_LOCAL_FILE="${BACKUP_LOCAL_DIR}/${BACKUP_FILE_NAME}"
 # Controle da instalação
 # ==========================================================
 
-TOTAL_STEPS=20
+TOTAL_STEPS=21
 CURRENT_STEP=0
 
 init_logging() {
