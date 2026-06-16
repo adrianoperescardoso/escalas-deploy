@@ -7,7 +7,25 @@ LOG_FILE="/tmp/install-${APP_NAME}.log"
 
 DEVELOPMENT_MODE=true
 
-TOTAL_STEPS=19
+# ==========================================================
+# GitHub Release
+# ==========================================================
+
+GITHUB_OWNER="adrianoperescardoso"
+GITHUB_REPOSITORY="escalas-deploy"
+RELEASE_VERSION="v1.0.0-beta"
+
+BACKUP_FILE_NAME="Escalas.backup"
+BACKUP_DOWNLOAD_URL="https://github.com/${GITHUB_OWNER}/${GITHUB_REPOSITORY}/releases/download/${RELEASE_VERSION}/${BACKUP_FILE_NAME}"
+
+BACKUP_LOCAL_DIR="${APP_DIR}/postgres/backup"
+BACKUP_LOCAL_FILE="${BACKUP_LOCAL_DIR}/${BACKUP_FILE_NAME}"
+
+# ==========================================================
+# Controle da instalação
+# ==========================================================
+
+TOTAL_STEPS=20
 CURRENT_STEP=0
 
 init_logging() {

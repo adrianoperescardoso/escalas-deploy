@@ -22,6 +22,7 @@ main() {
   prepare_folders
   setup_postgres
   test_postgres
+  download_assets
   show_postgres_info
   sucesso "Escalas Deploy concluído com sucesso."
   print_summary
