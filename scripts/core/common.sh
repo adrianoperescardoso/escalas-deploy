@@ -15,11 +15,25 @@ GITHUB_OWNER="adrianoperescardoso"
 GITHUB_REPOSITORY="escalas-deploy"
 RELEASE_VERSION="v1.0.0-beta"
 
+# ==========================================================
+# Backup PostgreSQL
+# ==========================================================
+
 BACKUP_FILE_NAME="Escalas.backup"
 BACKUP_DOWNLOAD_URL="https://github.com/${GITHUB_OWNER}/${GITHUB_REPOSITORY}/releases/download/${RELEASE_VERSION}/${BACKUP_FILE_NAME}"
 
 BACKUP_LOCAL_DIR="${APP_DIR}/postgres/backup"
 BACKUP_LOCAL_FILE="${BACKUP_LOCAL_DIR}/${BACKUP_FILE_NAME}"
+
+# ==========================================================
+# Pacote da aplicação
+# ==========================================================
+
+APPLICATION_PACKAGE_NAME="DeploymentUnit1_20260616181805.zip"
+APPLICATION_DOWNLOAD_URL="https://github.com/${GITHUB_OWNER}/${GITHUB_REPOSITORY}/releases/download/${RELEASE_VERSION}/${APPLICATION_PACKAGE_NAME}"
+
+APPLICATION_LOCAL_DIR="${APP_DIR}/application"
+APPLICATION_LOCAL_FILE="${APPLICATION_LOCAL_DIR}/${APPLICATION_PACKAGE_NAME}"
 
 # ==========================================================
 # Controle da instalação
@@ -108,6 +122,7 @@ print_summary() {
   echo "Projeto Docker Compose : $PROJECT_NAME"
   echo "Diretório              : $APP_DIR"
   echo "Modo desenvolvimento   : $DEVELOPMENT_MODE"
+  echo "Release GitHub         : $RELEASE_VERSION"
   echo "Docker                 : $(docker --version 2>/dev/null || echo 'não instalado')"
   echo "Docker Compose         : $(docker compose version 2>/dev/null || echo 'não instalado')"
   echo "Log                    : $LOG_FILE"
