@@ -5,7 +5,7 @@
 # Baixar os artefatos necessários para a instalação.
 #
 # Esta etapa:
-# - cria os diretórios locais;
+# - cria os diretórios locais de artefatos;
 # - baixa o backup PostgreSQL;
 # - baixa o pacote da aplicação;
 # - valida os arquivos baixados.
@@ -30,7 +30,7 @@ create_assets_directories() {
     log "Criando diretórios dos artefatos..."
 
     mkdir -p "$BACKUP_LOCAL_DIR"
-    mkdir -p "$APPLICATION_LOCAL_DIR"
+    mkdir -p "$APPLICATION_ASSETS_DIR"
 
 }
 
@@ -89,7 +89,7 @@ validate_application_package() {
 
     echo
     echo "========================================"
-    echo " Aplicação"
+    echo " Pacote da aplicação"
     echo "========================================"
     echo "Arquivo : $APPLICATION_LOCAL_FILE"
     echo "Tamanho : $(du -h "$APPLICATION_LOCAL_FILE" | awk '{print $1}')"

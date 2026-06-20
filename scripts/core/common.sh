@@ -22,7 +22,7 @@ RELEASE_VERSION="v1.0.0-beta"
 BACKUP_FILE_NAME="Escalas.backup"
 BACKUP_DOWNLOAD_URL="https://github.com/${GITHUB_OWNER}/${GITHUB_REPOSITORY}/releases/download/${RELEASE_VERSION}/${BACKUP_FILE_NAME}"
 
-BACKUP_LOCAL_DIR="${APP_DIR}/postgres/backup"
+BACKUP_LOCAL_DIR="${APP_DIR}/assets/backup"
 BACKUP_LOCAL_FILE="${BACKUP_LOCAL_DIR}/${BACKUP_FILE_NAME}"
 
 # ==========================================================
@@ -32,14 +32,16 @@ BACKUP_LOCAL_FILE="${BACKUP_LOCAL_DIR}/${BACKUP_FILE_NAME}"
 APPLICATION_PACKAGE_NAME="DeploymentUnit1_20260616181805.zip"
 APPLICATION_DOWNLOAD_URL="https://github.com/${GITHUB_OWNER}/${GITHUB_REPOSITORY}/releases/download/${RELEASE_VERSION}/${APPLICATION_PACKAGE_NAME}"
 
-APPLICATION_LOCAL_DIR="${APP_DIR}/application"
-APPLICATION_LOCAL_FILE="${APPLICATION_LOCAL_DIR}/${APPLICATION_PACKAGE_NAME}"
+APPLICATION_ASSETS_DIR="${APP_DIR}/assets/application"
+APPLICATION_LOCAL_FILE="${APPLICATION_ASSETS_DIR}/${APPLICATION_PACKAGE_NAME}"
+
+APPLICATION_BUILD_DIR="${APP_DIR}/build/application"
 
 # ==========================================================
 # Controle da instalação
 # ==========================================================
 
-TOTAL_STEPS=21
+TOTAL_STEPS=22
 CURRENT_STEP=0
 
 init_logging() {
