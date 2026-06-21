@@ -6,9 +6,14 @@
 #
 # Esta etapa:
 # - cria os diretórios locais de artefatos;
-# - baixa o backup PostgreSQL;
-# - baixa o pacote da aplicação;
-# - valida os arquivos baixados.
+# - baixa o backup PostgreSQL, se ainda não existir;
+# - baixa o pacote da aplicação, se ainda não existir;
+# - valida os arquivos disponíveis localmente.
+#
+# Observação:
+# Se os arquivos já existirem e não estiverem vazios, o download
+# é ignorado. Isso evita baixar novamente arquivos grandes em
+# execuções repetidas do instalador.
 # ============================================================
 
 download_assets() {
@@ -22,7 +27,7 @@ download_assets() {
     download_application_package
     validate_application_package
 
-    sucesso "Artefatos baixados com sucesso."
+    sucesso "Artefatos disponíveis com sucesso."
 }
 
 create_assets_directories() {
@@ -36,10 +41,17 @@ create_assets_directories() {
 
 download_database_backup() {
 
-    log "Baixando backup do banco de dados..."
+    log "Verificando backup do banco de dados..."
 
     echo "Origem : $BACKUP_DOWNLOAD_URL"
     echo "Destino: $BACKUP_LOCAL_FILE"
+
+    if [ -s "$BACKUP_LOCAL_FILE" ]; then
+        log "Backup já existe localmente. Download ignorado."
+        return
+    fi
+
+    log "Baixando backup do banco de dados..."
 
     if ! wget -O "$BACKUP_LOCAL_FILE" "$BACKUP_DOWNLOAD_URL"; then
         erro "Falha ao baixar o backup do banco."
@@ -51,8 +63,14 @@ download_database_backup() {
 
 validate_database_backup() {
 
+    log "Validando backup PostgreSQL..."
+
+    if [ ! -f "$BACKUP_LOCAL_FILE" ]; then
+        erro "Arquivo de backup não encontrado: $BACKUP_LOCAL_FILE"
+    fi
+
     if [ ! -s "$BACKUP_LOCAL_FILE" ]; then
-        erro "Arquivo de backup inválido."
+        erro "Arquivo de backup inválido ou vazio: $BACKUP_LOCAL_FILE"
     fi
 
     echo
@@ -68,10 +86,17 @@ validate_database_backup() {
 
 download_application_package() {
 
-    log "Baixando pacote da aplicação..."
+    log "Verificando pacote da aplicação..."
 
     echo "Origem : $APPLICATION_DOWNLOAD_URL"
     echo "Destino: $APPLICATION_LOCAL_FILE"
+
+    if [ -s "$APPLICATION_LOCAL_FILE" ]; then
+        log "Pacote da aplicação já existe localmente. Download ignorado."
+        return
+    fi
+
+    log "Baixando pacote da aplicação..."
 
     if ! wget -O "$APPLICATION_LOCAL_FILE" "$APPLICATION_DOWNLOAD_URL"; then
         erro "Falha ao baixar o pacote da aplicação."
@@ -83,8 +108,14 @@ download_application_package() {
 
 validate_application_package() {
 
+    log "Validando pacote da aplicação..."
+
+    if [ ! -f "$APPLICATION_LOCAL_FILE" ]; then
+        erro "Pacote da aplicação não encontrado: $APPLICATION_LOCAL_FILE"
+    fi
+
     if [ ! -s "$APPLICATION_LOCAL_FILE" ]; then
-        erro "Pacote da aplicação inválido."
+        erro "Pacote da aplicação inválido ou vazio: $APPLICATION_LOCAL_FILE"
     fi
 
     echo
