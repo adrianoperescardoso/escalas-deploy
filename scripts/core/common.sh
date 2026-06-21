@@ -196,8 +196,8 @@ get_host_ip() {
 # ------------------------------------------------------------
 # Exibe a tela final da instalação.
 #
-# A URL da aplicação recebe destaque porque é a informação mais
-# importante para quem acabou de executar o instalador.
+# A URL da aplicação é exibida por último e com destaque, pois
+# é a informação mais importante para o usuário final.
 # ------------------------------------------------------------
 print_summary() {
 
@@ -224,14 +224,6 @@ print_summary() {
     echo "============================================================"
     echo
     echo "A instalação foi concluída e a aplicação foi iniciada."
-    echo
-    echo "============================================================"
-    echo " Acesso ao Sistema"
-    echo "============================================================"
-    echo
-    echo "URL:"
-    echo
-    echo "    http://${HOST_IP}:${APP_PORT:-8080}"
     echo
     echo "============================================================"
     echo " Banco de Dados"
@@ -263,6 +255,14 @@ print_summary() {
     printf "%-17s %s\n" "Compose:" "$COMPOSE_VERSION"
     printf "%-17s %s\n" "Modo:" "$EXECUTION_MODE"
     echo
+    echo "============================================================"
+    echo " ACESSE O SISTEMA"
+    echo "============================================================"
+    echo
+    echo "    http://${HOST_IP}:${APP_PORT:-8080}"
+    echo
+    echo "============================================================"
+    echo " Instalação finalizada."
     echo "============================================================"
     echo
 }
