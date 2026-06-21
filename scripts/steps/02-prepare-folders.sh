@@ -8,8 +8,7 @@
 # - diretório principal em /opt/escalas;
 # - pasta para backup geral da aplicação;
 # - pasta para logs;
-# - estrutura completa do PostgreSQL;
-# - pasta da aplicação;
+# - estrutura do PostgreSQL;
 # - pasta de configurações.
 # ============================================================
 
@@ -31,15 +30,9 @@ prepare_folders() {
 
     # Estrutura do PostgreSQL.
     log "Criando estrutura do PostgreSQL..."
-
     mkdir -p "$APP_DIR/postgres"
     mkdir -p "$APP_DIR/postgres/data"
     mkdir -p "$APP_DIR/postgres/backup"
-    mkdir -p "$APP_DIR/postgres/init"
-
-    # Diretório reservado para aplicação.
-    log "Criando diretório da aplicação..."
-    mkdir -p "$APP_DIR/app"
 
     # Diretório reservado para arquivos de configuração.
     log "Criando diretório de configurações..."
@@ -54,25 +47,14 @@ prepare_folders() {
     chmod -R 755 "$APP_DIR"
 
     # Validação.
-
     log "Validando estrutura criada..."
 
     [ -d "$APP_DIR" ] || erro "Diretório principal não foi criado."
-
     [ -d "$APP_DIR/backup" ] || erro "Diretório backup não foi criado."
-
     [ -d "$APP_DIR/logs" ] || erro "Diretório logs não foi criado."
-
     [ -d "$APP_DIR/postgres" ] || erro "Diretório postgres não foi criado."
-
     [ -d "$APP_DIR/postgres/data" ] || erro "Diretório postgres/data não foi criado."
-
     [ -d "$APP_DIR/postgres/backup" ] || erro "Diretório postgres/backup não foi criado."
-
-    [ -d "$APP_DIR/postgres/init" ] || erro "Diretório postgres/init não foi criado."
-
-    [ -d "$APP_DIR/app" ] || erro "Diretório app não foi criado."
-
     [ -d "$APP_DIR/config" ] || erro "Diretório config não foi criado."
 
     sucesso "Estrutura de diretórios criada com sucesso."
