@@ -1,5 +1,26 @@
 #!/bin/bash
 
+# ============================================================
+# Objetivo:
+# Configurar e inicializar o PostgreSQL da aplicação.
+#
+# Nesta etapa:
+# - gera o arquivo .env usado pelo Docker Compose;
+# - grava as variáveis do PostgreSQL;
+# - grava as variáveis GeneXus GX_CONNECTION_*;
+# - gera um docker-compose.yml temporário apenas com PostgreSQL;
+# - baixa a imagem do PostgreSQL;
+# - inicia o container do banco;
+# - aguarda o banco ficar disponível;
+# - valida a conexão básica.
+#
+# Observação importante:
+# O mesmo arquivo .env será usado depois pelo serviço da aplicação.
+# O Docker Compose injeta essas variáveis dentro do container,
+# e o Dockerfile usa envsubst para substituir os placeholders
+# ${GX_CONNECTION_*} dentro do appsettings.json.
+# ============================================================
+
 generate_env_file() {
     step "Gerando arquivo .env"
 
@@ -25,7 +46,29 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 
 APP_PORT=8080
-APP_IMAGE=registry.seudominio.com/${APP_NAME}:latest
+APP_IMAGE=${APPLICATION_IMAGE}
+
+# ==========================================================
+# Variáveis de conexão da aplicação GeneXus
+# ==========================================================
+# Essas variáveis serão carregadas pelo Docker Compose no
+# container da aplicação.
+#
+# Durante a inicialização do container, o comando envsubst
+# trocará os placeholders do appsettings.json por estes valores.
+# ==========================================================
+
+GX_CONNECTION_DEFAULT_DB=escalas
+GX_CONNECTION_DEFAULT_DATASOURCE=postgres
+GX_CONNECTION_DEFAULT_USER=postgres
+GX_CONNECTION_DEFAULT_PASSWORD=postgres
+GX_CONNECTION_DEFAULT_PORT=5432
+
+GX_CONNECTION_GAM_DB=escalas
+GX_CONNECTION_GAM_DATASOURCE=postgres
+GX_CONNECTION_GAM_USER=postgres
+GX_CONNECTION_GAM_PASSWORD=postgres
+GX_CONNECTION_GAM_PORT=5432
 EOF
 
     chmod 600 "$ENV_FILE"

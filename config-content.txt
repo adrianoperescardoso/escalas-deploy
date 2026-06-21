@@ -1,0 +1,99 @@
+====================================================
+/opt/escalas/build/application/application.gam
+====================================================
+﻿<?xml version="1.0" encoding="utf-8"?><Application><Id>bbe58eb2-4b62-4444-8493-584c863a044c</Id></Application>
+====================================================
+/opt/escalas/build/application/connection.gam
+====================================================
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Connection>
+  <key>1dec52dd-a79c-44cf-b62b-1824bc518438</key>
+</Connection>
+====================================================
+/opt/escalas/build/application/appsettings.json
+====================================================
+{
+  "appSettings": {
+    "AppMainNamespace": "GeneXus.Programs",
+    "DataStore1": "GAM",
+    "DataStore2": "Default",
+    "DataStore-Count": "2",
+    "DataStore-Default": "Default",
+    "Connection-GAM-DBMS": "postgresql",
+    "Connection-GAM-Port": "5432",
+    "Connection-GAM-LockTimeout": "0",
+    "Connection-GAM-LockRetryCount": "10",
+    "Connection-GAM-Datasource": "RiRMi5ZbMb24GJJ4bbGOtA==",
+    "Connection-GAM-User": "65/3Tz05d33rXDGSbjauKg==",
+    "Connection-GAM-Password": "65/3Tz05d33rXDGSbjauKg==",
+    "Connection-GAM-DB": "Escalas",
+    "Connection-GAM-Schema": "0fondIAXeuShYIlAc8oNIQ==",
+    "Connection-GAM-Opts": ";Integrated Security=no;",
+    "Connection-GAM-TrnInt": "1",
+    "Connection-Default-DBMS": "postgresql",
+    "Connection-Default-Port": "5432",
+    "Connection-Default-LockTimeout": "0",
+    "Connection-Default-LockRetryCount": "10",
+    "Connection-Default-Datasource": "RiRMi5ZbMb24GJJ4bbGOtA==",
+    "Connection-Default-User": "65/3Tz05d33rXDGSbjauKg==",
+    "Connection-Default-Password": "65/3Tz05d33rXDGSbjauKg==",
+    "Connection-Default-DB": "Escalas",
+    "Connection-Default-Schema": "1PQRv7VD3d0smBdMGAfx6A==",
+    "Connection-Default-Opts": ";Integrated Security=no;",
+    "Connection-Default-TrnInt": "1",
+    "DateFormat": "DMY",
+    "YearLimit": "1940",
+    "TimeAmPmFormat": "24",
+    "VER_STAMP": "20260614.164440",
+    "CS_BLOB_PATH": "PublicTempStorage",
+    "TMPMEDIA_DIR": "PrivateTempStorage",
+    "PRINT_LAYOUT_METADATA_DIR": "LayoutMetadata",
+    "PDF_RPT_LIBRARY": "ITEXT8",
+    "StorageTimeZone": "1",
+    "LOGIN_AS_USERID": "0",
+    "LANGUAGE": "por",
+    "LANG_NAME": "Portuguese",
+    "DECIMAL_POINT": ",",
+    "DATE_FMT": "DMY",
+    "CTOD_DATE_FMT": "L",
+    "Culture": "pt-BR",
+    "Theme": "WorkWithPlusDS",
+    "UseNamedParameters": "1",
+    "EnableIntegratedSecurity": "1",
+    "IntegratedSecurityLoginWeb": "login",
+    "IntegratedSecurityNotAuthorizedWeb": "gamnotauthorized",
+    "MAX_CURSOR": "100",
+    "STATIC_CONTENT": "",
+    "GX_BUILD_NUMBER": "28360",
+    "CACHE_CONTENT_EXPIRATION": "36",
+    "FTP_DEFAULT_USER": "Zd8hx1OPJaolo5nN5s4nmc==",
+    "FTP_DEFAULT_PASSWORD": "kvwmxbHzjMA66dQNAHRlhn==",
+    "ENABLE_MANAGEMENT": "0",
+    "COMPRESS_HTML": "1",
+    "IE_COMPATIBILITY_VIEW": "edge",
+    "DocumentType": "HTML5",
+    "EXPOSE_METADATA": "0",
+    "SMART_CACHING": "0",
+    "wcf:serviceHostingEnvironment:useClassicReadEntityBodyMode": "true",
+    "HTTP_PROTOCOL": "Secure",
+    "SAMESITE_COOKIE": "Lax",
+    "CACHE_INVALIDATION_TOKEN": "20266161715403",
+    "CORS_ALLOW_ORIGIN": "",
+    "SERVICE_AS_CONTROLLER": "1",
+    "RestJsonCaseSensitive": "0",
+    "LOG_OUTPUT": "RollingFile",
+    "MaxFileUploadSize": "528000000",
+    "SessionTimeout": "20"
+  },
+  "languages": {
+    "Portuguese": {
+      "code": "por",
+      "culture": "pt-BR",
+      "date_fmt": "DMY",
+      "decimal_point": ",",
+      "rtl": "false",
+      "thousand_sep": ".",
+      "time_fmt": "24"
+    }
+  }
+}

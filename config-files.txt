@@ -1,0 +1,3 @@
+/opt/escalas/build/application/application.gam
+/opt/escalas/build/application/connection.gam
+/opt/escalas/build/application/appsettings.json

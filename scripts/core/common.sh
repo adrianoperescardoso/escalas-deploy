@@ -127,6 +127,56 @@ confirmar() {
   esac
 }
 
+load_env_file() {
+  if [ -f "$APP_DIR/.env" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$APP_DIR/.env"
+    set +a
+  fi
+}
+
+get_host_ip() {
+  hostname -I | awk '{print $1}'
+}
+
+show_access_information() {
+  load_env_file
+
+  local HOST_IP
+  HOST_IP="$(get_host_ip)"
+
+  echo
+  echo "========================================"
+  echo " Informações de acesso"
+  echo "========================================"
+  echo
+  echo "Aplicação"
+  echo "----------------------------------------"
+  echo "URL...............: http://${HOST_IP}:${APP_PORT:-8080}"
+  echo
+  echo "PostgreSQL"
+  echo "----------------------------------------"
+  echo "Host..............: ${HOST_IP}"
+  echo "Porta.............: ${POSTGRES_PORT:-5432}"
+  echo "Banco.............: ${POSTGRES_DB:-escalas}"
+  echo "Usuário...........: ${POSTGRES_USER:-postgres}"
+  echo
+  echo "Docker"
+  echo "----------------------------------------"
+  echo "Projeto Compose...: ${PROJECT_NAME}"
+  echo "Imagem aplicação..: ${APPLICATION_IMAGE}"
+  echo
+  echo "Arquivos"
+  echo "----------------------------------------"
+  echo "Diretório app.....: ${APP_DIR}"
+  echo "Backup............: ${BACKUP_LOCAL_DIR}"
+  echo "Build aplicação...: ${APPLICATION_BUILD_DIR}"
+  echo "Log...............: ${LOG_FILE}"
+  echo "========================================"
+  echo
+}
+
 print_summary() {
   echo
   echo "========================================"

@@ -35,6 +35,7 @@ main() {
   start_application
 
   show_postgres_info
+  show_access_information
 
   sucesso "Escalas Deploy concluído com sucesso."
   print_summary
