@@ -25,6 +25,7 @@ main() {
   download_assets
   restore_database
   prepare_application
+  build_application_image
   show_postgres_info
   sucesso "Escalas Deploy concluído com sucesso."
   print_summary

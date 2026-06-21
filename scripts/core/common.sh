@@ -38,10 +38,20 @@ APPLICATION_LOCAL_FILE="${APPLICATION_ASSETS_DIR}/${APPLICATION_PACKAGE_NAME}"
 APPLICATION_BUILD_DIR="${APP_DIR}/build/application"
 
 # ==========================================================
+# Imagem Docker da aplicação
+# ==========================================================
+
+APPLICATION_IMAGE_NAME="escalas-app"
+APPLICATION_IMAGE_TAG="1.0.0-beta"
+APPLICATION_IMAGE="${APPLICATION_IMAGE_NAME}:${APPLICATION_IMAGE_TAG}"
+
+APPLICATION_DOCKERFILE="${BASE_DIR}/docker/app/Dockerfile"
+
+# ==========================================================
 # Controle da instalação
 # ==========================================================
 
-TOTAL_STEPS=22
+TOTAL_STEPS=23
 CURRENT_STEP=0
 
 init_logging() {
@@ -58,6 +68,8 @@ print_header() {
   echo " Projeto Docker Compose: $PROJECT_NAME"
   echo " Diretório: $APP_DIR"
   echo " Modo desenvolvimento: $DEVELOPMENT_MODE"
+  echo " Release GitHub: $RELEASE_VERSION"
+  echo " Imagem aplicação: $APPLICATION_IMAGE"
   echo " Log: $LOG_FILE"
   echo "========================================"
 }
@@ -125,6 +137,7 @@ print_summary() {
   echo "Diretório              : $APP_DIR"
   echo "Modo desenvolvimento   : $DEVELOPMENT_MODE"
   echo "Release GitHub         : $RELEASE_VERSION"
+  echo "Imagem aplicação       : $APPLICATION_IMAGE"
   echo "Docker                 : $(docker --version 2>/dev/null || echo 'não instalado')"
   echo "Docker Compose         : $(docker compose version 2>/dev/null || echo 'não instalado')"
   echo "Log                    : $LOG_FILE"
