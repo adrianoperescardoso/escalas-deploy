@@ -2,6 +2,8 @@
 # Logs
 # ==========================================================
 *.log
+logs/
+debug/
 
 # ==========================================================
 # Variáveis de ambiente locais
@@ -19,6 +21,15 @@
 *.tmp
 *.bak
 *~
+*.swp
+*.swo
+
+# Arquivos gerados durante investigações
+localhost.txt
+config-content.txt
+config-files.txt
+app-error.log
+install.log
 
 # ==========================================================
 # Dados do PostgreSQL (gerados durante a instalação)
@@ -26,12 +37,18 @@
 app/postgres/data/
 
 # ==========================================================
-# Backups locais do banco
+# Build temporário da aplicação
 # ==========================================================
+app/build/
+
+# ==========================================================
+# Backups locais
+# ==========================================================
+app/assets/backup/
 sql/backup/
 
 # ==========================================================
-# Arquivos do sistema
+# Arquivos do sistema operacional
 # ==========================================================
 .DS_Store
 Thumbs.db
