@@ -18,6 +18,7 @@ main() {
   print_header
 
   cleanup_previous_execution
+
   prepare_server
   prepare_folders
 
@@ -29,7 +30,9 @@ main() {
 
   prepare_application
   build_application_image
+
   configure_compose
+  start_application
 
   show_postgres_info
 
