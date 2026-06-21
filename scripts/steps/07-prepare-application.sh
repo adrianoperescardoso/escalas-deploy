@@ -12,6 +12,8 @@
 # - descompacta a aplicação;
 # - localiza o appsettings.json gerado pelo GeneXus;
 # - transforma as configurações de conexão em variáveis;
+# - localiza o connection.gam gerado pelo GeneXus;
+# - transforma a chave do GAM em variável;
 # - valida os principais arquivos da aplicação.
 #
 # Esta etapa NÃO cria a imagem Docker.
@@ -26,6 +28,7 @@ prepare_application() {
     create_application_build_directory
     extract_application_package
     configure_genexus_appsettings
+    configure_genexus_connection_gam
     validate_application_files
 
     sucesso "Arquivos da aplicação preparados com sucesso."
@@ -113,6 +116,45 @@ configure_genexus_appsettings() {
     log "appsettings.json parametrizado com sucesso."
 }
 
+configure_genexus_connection_gam() {
+
+    log "Parametrizando connection.gam gerado pelo GeneXus..."
+
+    local CONNECTION_GAM_FILE
+
+    CONNECTION_GAM_FILE=$(find "$APPLICATION_BUILD_DIR" -name "connection.gam" | head -n 1)
+
+    if [ -z "$CONNECTION_GAM_FILE" ]; then
+        erro "connection.gam não encontrado para parametrização."
+    fi
+
+    # ------------------------------------------------------------
+    # Contexto:
+    # O arquivo connection.gam contém a chave que liga a aplicação
+    # GeneXus/GAM ao registro de conexão existente no banco.
+    #
+    # Essa chave é dinâmica porque vem do banco restaurado:
+    #
+    #   SELECT s.sysconncfgkey
+    #   FROM gam.sysconnectionconfig s;
+    #
+    # A etapa 06 consulta essa chave após o restore e grava no .env
+    # como GX_CONNECTION_GAM_KEY.
+    #
+    # Aqui apenas trocamos a chave fixa por ${GX_CONNECTION_GAM_KEY}.
+    # No startup do container, o envsubst troca a variável pelo valor
+    # real encontrado no banco.
+    # ------------------------------------------------------------
+
+    cp "$CONNECTION_GAM_FILE" "${CONNECTION_GAM_FILE}.original"
+
+    replace_xml_tag_value "$CONNECTION_GAM_FILE" "key" '${GX_CONNECTION_GAM_KEY}'
+
+    validate_genexus_connection_gam_variables "$CONNECTION_GAM_FILE"
+
+    log "connection.gam parametrizado com sucesso."
+}
+
 replace_json_value() {
 
     local FILE_PATH="$1"
@@ -142,6 +184,35 @@ replace_json_value() {
 
 }
 
+replace_xml_tag_value() {
+
+    local FILE_PATH="$1"
+    local XML_TAG="$2"
+    local NEW_VALUE="$3"
+
+    # ------------------------------------------------------------
+    # Substitui o conteúdo de uma tag XML simples.
+    #
+    # Exemplo:
+    # <key>valor-fixo</key>
+    #
+    # vira:
+    # <key>${GX_CONNECTION_GAM_KEY}</key>
+    #
+    # O connection.gam gerado pelo GeneXus possui essa estrutura
+    # simples, por isso o sed é suficiente aqui.
+    # ------------------------------------------------------------
+
+    if ! grep -q "<${XML_TAG}>" "$FILE_PATH"; then
+        erro "Tag XML não encontrada no connection.gam: ${XML_TAG}"
+    fi
+
+    sed -i \
+        "s#<${XML_TAG}>[^<]*</${XML_TAG}>#<${XML_TAG}>${NEW_VALUE}</${XML_TAG}>#g" \
+        "$FILE_PATH"
+
+}
+
 validate_genexus_appsettings_variables() {
 
     local APPSETTINGS_FILE="$1"
@@ -159,6 +230,16 @@ validate_genexus_appsettings_variables() {
     grep -q '\${GX_CONNECTION_GAM_PASSWORD}' "$APPSETTINGS_FILE" || erro "Variável GX_CONNECTION_GAM_PASSWORD não aplicada."
     grep -q '\${GX_CONNECTION_GAM_DB}' "$APPSETTINGS_FILE" || erro "Variável GX_CONNECTION_GAM_DB não aplicada."
     grep -q '\${GX_CONNECTION_GAM_PORT}' "$APPSETTINGS_FILE" || erro "Variável GX_CONNECTION_GAM_PORT não aplicada."
+
+}
+
+validate_genexus_connection_gam_variables() {
+
+    local CONNECTION_GAM_FILE="$1"
+
+    log "Validando variável no connection.gam..."
+
+    grep -q '\${GX_CONNECTION_GAM_KEY}' "$CONNECTION_GAM_FILE" || erro "Variável GX_CONNECTION_GAM_KEY não aplicada."
 
 }
 
@@ -182,13 +263,14 @@ validate_application_files() {
     echo "============================================================"
     echo " Aplicação preparada"
     echo "============================================================"
-    echo "Pacote          : $APPLICATION_PACKAGE_NAME"
-    echo "Origem          : $APPLICATION_LOCAL_FILE"
-    echo "Destino         : $APPLICATION_BUILD_DIR"
-    echo "Startup DLL     : $STARTUP_DLL"
-    echo "Configuração    : $APPSETTINGS"
-    echo "Backup original : ${APPSETTINGS}.original"
-    echo "Connection GAM  : $CONNECTION_GAM"
+    echo "Pacote                   : $APPLICATION_PACKAGE_NAME"
+    echo "Origem                   : $APPLICATION_LOCAL_FILE"
+    echo "Destino                  : $APPLICATION_BUILD_DIR"
+    echo "Startup DLL              : $STARTUP_DLL"
+    echo "AppSettings              : $APPSETTINGS"
+    echo "Backup AppSettings       : ${APPSETTINGS}.original"
+    echo "Connection GAM           : $CONNECTION_GAM"
+    echo "Backup Connection GAM    : ${CONNECTION_GAM}.original"
     echo "============================================================"
     echo
 
