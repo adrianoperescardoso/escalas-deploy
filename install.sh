@@ -20,13 +20,19 @@ main() {
   cleanup_previous_execution
   prepare_server
   prepare_folders
+
   setup_postgres
   test_postgres
+
   download_assets
   restore_database
+
   prepare_application
   build_application_image
+  configure_compose
+
   show_postgres_info
+
   sucesso "Escalas Deploy concluído com sucesso."
   print_summary
 }

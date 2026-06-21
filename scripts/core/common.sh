@@ -51,7 +51,7 @@ APPLICATION_DOCKERFILE="${BASE_DIR}/docker/app/Dockerfile"
 # Controle da instalação
 # ==========================================================
 
-TOTAL_STEPS=23
+TOTAL_STEPS=24
 CURRENT_STEP=0
 
 init_logging() {
