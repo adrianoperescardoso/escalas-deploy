@@ -1,22 +1,24 @@
 #!/bin/bash
 
 # ============================================================
-# Objetivo:
-# Baixar os artefatos necessários para a instalação.
+# Escalas Deploy - Download de Artefatos
+# ============================================================
+#
+# Responsável por disponibilizar todos os arquivos necessários
+# para a instalação da aplicação.
 #
 # Esta etapa:
-# - cria os diretórios locais de artefatos;
-# - baixa o backup PostgreSQL, se ainda não existir;
-# - baixa o pacote da aplicação, se ainda não existir;
-# - valida os arquivos disponíveis localmente.
+# - cria os diretórios de armazenamento;
+# - baixa o backup do PostgreSQL;
+# - baixa o pacote da aplicação;
+# - valida a integridade básica dos arquivos.
 #
-# Observação:
-# Se os arquivos já existirem e não estiverem vazios, o download
-# é ignorado. Isso evita baixar novamente arquivos grandes em
-# execuções repetidas do instalador.
+# Caso os arquivos já existam localmente e não estejam vazios,
+# o download é ignorado para reduzir o tempo de instalação.
 # ============================================================
 
 download_assets() {
+
     step "Baixando artefatos da instalação"
 
     create_assets_directories
@@ -30,15 +32,20 @@ download_assets() {
     sucesso "Artefatos disponíveis com sucesso."
 }
 
+# ------------------------------------------------------------
+# Cria os diretórios utilizados para armazenar os artefatos.
+# ------------------------------------------------------------
 create_assets_directories() {
 
     log "Criando diretórios dos artefatos..."
 
     mkdir -p "$BACKUP_LOCAL_DIR"
     mkdir -p "$APPLICATION_ASSETS_DIR"
-
 }
 
+# ------------------------------------------------------------
+# Baixa o backup do PostgreSQL.
+# ------------------------------------------------------------
 download_database_backup() {
 
     log "Verificando backup do banco de dados..."
@@ -53,25 +60,20 @@ download_database_backup() {
 
     log "Baixando backup do banco de dados..."
 
-    if ! wget -O "$BACKUP_LOCAL_FILE" "$BACKUP_DOWNLOAD_URL"; then
-        erro "Falha ao baixar o backup do banco."
-    fi
+    wget -O "$BACKUP_LOCAL_FILE" "$BACKUP_DOWNLOAD_URL"         || erro "Falha ao baixar o backup do banco."
 
     log "Download do backup concluído."
-
 }
 
+# ------------------------------------------------------------
+# Valida o arquivo de backup.
+# ------------------------------------------------------------
 validate_database_backup() {
 
     log "Validando backup PostgreSQL..."
 
-    if [ ! -f "$BACKUP_LOCAL_FILE" ]; then
-        erro "Arquivo de backup não encontrado: $BACKUP_LOCAL_FILE"
-    fi
-
-    if [ ! -s "$BACKUP_LOCAL_FILE" ]; then
-        erro "Arquivo de backup inválido ou vazio: $BACKUP_LOCAL_FILE"
-    fi
+    [ -f "$BACKUP_LOCAL_FILE" ] || erro "Arquivo de backup não encontrado: $BACKUP_LOCAL_FILE"
+    [ -s "$BACKUP_LOCAL_FILE" ] || erro "Arquivo de backup inválido ou vazio: $BACKUP_LOCAL_FILE"
 
     echo
     echo "========================================"
@@ -81,9 +83,11 @@ validate_database_backup() {
     echo "Tamanho : $(du -h "$BACKUP_LOCAL_FILE" | awk '{print $1}')"
     echo "========================================"
     echo
-
 }
 
+# ------------------------------------------------------------
+# Baixa o pacote da aplicação.
+# ------------------------------------------------------------
 download_application_package() {
 
     log "Verificando pacote da aplicação..."
@@ -98,25 +102,20 @@ download_application_package() {
 
     log "Baixando pacote da aplicação..."
 
-    if ! wget -O "$APPLICATION_LOCAL_FILE" "$APPLICATION_DOWNLOAD_URL"; then
-        erro "Falha ao baixar o pacote da aplicação."
-    fi
+    wget -O "$APPLICATION_LOCAL_FILE" "$APPLICATION_DOWNLOAD_URL"         || erro "Falha ao baixar o pacote da aplicação."
 
     log "Download da aplicação concluído."
-
 }
 
+# ------------------------------------------------------------
+# Valida o pacote da aplicação.
+# ------------------------------------------------------------
 validate_application_package() {
 
     log "Validando pacote da aplicação..."
 
-    if [ ! -f "$APPLICATION_LOCAL_FILE" ]; then
-        erro "Pacote da aplicação não encontrado: $APPLICATION_LOCAL_FILE"
-    fi
-
-    if [ ! -s "$APPLICATION_LOCAL_FILE" ]; then
-        erro "Pacote da aplicação inválido ou vazio: $APPLICATION_LOCAL_FILE"
-    fi
+    [ -f "$APPLICATION_LOCAL_FILE" ] || erro "Pacote da aplicação não encontrado: $APPLICATION_LOCAL_FILE"
+    [ -s "$APPLICATION_LOCAL_FILE" ] || erro "Pacote da aplicação inválido ou vazio: $APPLICATION_LOCAL_FILE"
 
     echo
     echo "========================================"
@@ -126,5 +125,4 @@ validate_application_package() {
     echo "Tamanho : $(du -h "$APPLICATION_LOCAL_FILE" | awk '{print $1}')"
     echo "========================================"
     echo
-
 }

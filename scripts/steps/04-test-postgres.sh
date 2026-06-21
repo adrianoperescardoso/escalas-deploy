@@ -1,79 +1,75 @@
 #!/bin/bash
 
 # ============================================================
-# Objetivo:
-# Testar a conexão com o PostgreSQL antes de executar restore.
+# Escalas Deploy - Teste do PostgreSQL
+# ============================================================
+#
+# Responsável por validar o funcionamento do PostgreSQL após
+# sua inicialização.
 #
 # Esta etapa confirma:
-# - se o container está rodando;
-# - se o banco escalas existe;
-# - se o usuário postgres consegue conectar;
-# - se é possível executar comandos SQL;
-# - se a criação, inserção, consulta e remoção de tabela funcionam.
+# - se o container está em execução;
+# - se é possível conectar ao banco de dados;
+# - se comandos SQL podem ser executados;
+# - se operações de criação, inserção, consulta e remoção
+#   funcionam corretamente.
+#
+# O objetivo é garantir que o banco esteja apto para receber
+# a restauração dos dados nas próximas etapas.
 # ============================================================
 
 test_postgres() {
-  step "Testando conexão com PostgreSQL"
 
-  # Carrega variáveis do .env.
-  source "$APP_DIR/.env"
+    step "Testando conexão com PostgreSQL"
 
-  # Valida se o container está rodando.
-  log "Validando se o container está em execução..."
+    # Carrega as variáveis definidas no arquivo .env.
+    source "$APP_DIR/.env"
 
-  if ! docker ps --format '{{.Names}}' | grep -q "^${POSTGRES_CONTAINER_NAME}$"; then
-    erro "Container PostgreSQL não está em execução."
-  fi
+    # --------------------------------------------------------
+    # Validação do container
+    # --------------------------------------------------------
 
-  # Testa conexão informando banco, usuário e senha.
-  log "Testando conexão com o banco ${POSTGRES_DB}..."
+    log "Validando se o container está em execução..."
 
-  docker exec \
-    "$POSTGRES_CONTAINER_NAME" \
-    psql \
-    -U "$POSTGRES_USER" \
-    -d "$POSTGRES_DB" \
-    -c "SELECT current_database();" || erro "Falha ao conectar no banco ${POSTGRES_DB}."
+    if ! docker ps --format '{{.Names}}' | grep -q "^${POSTGRES_CONTAINER_NAME}$"; then
+        erro "Container PostgreSQL não está em execução."
+    fi
 
-  # Cria tabela temporária de teste.
-  log "Criando tabela temporária de teste..."
+    # --------------------------------------------------------
+    # Teste de conexão
+    # --------------------------------------------------------
 
-  docker exec \
-    "$POSTGRES_CONTAINER_NAME" \
-    psql \
-    -U "$POSTGRES_USER" \
-    -d "$POSTGRES_DB" \
-    -c "CREATE TABLE IF NOT EXISTS teste_instalador (id SERIAL PRIMARY KEY, nome VARCHAR(100));"
+    log "Testando conexão com o banco ${POSTGRES_DB}..."
 
-  # Insere registro de teste.
-  log "Inserindo registro de teste..."
+    docker exec         "$POSTGRES_CONTAINER_NAME"         psql         -U "$POSTGRES_USER"         -d "$POSTGRES_DB"         -c "SELECT current_database();"         || erro "Falha ao conectar no banco ${POSTGRES_DB}."
 
-  docker exec \
-    "$POSTGRES_CONTAINER_NAME" \
-    psql \
-    -U "$POSTGRES_USER" \
-    -d "$POSTGRES_DB" \
-    -c "INSERT INTO teste_instalador(nome) VALUES ('teste de conexao');"
+    # --------------------------------------------------------
+    # Teste de escrita
+    # --------------------------------------------------------
 
-  # Consulta registro de teste.
-  log "Consultando registro de teste..."
+    log "Criando tabela temporária de teste..."
 
-  docker exec \
-    "$POSTGRES_CONTAINER_NAME" \
-    psql \
-    -U "$POSTGRES_USER" \
-    -d "$POSTGRES_DB" \
-    -c "SELECT * FROM teste_instalador;"
+    docker exec         "$POSTGRES_CONTAINER_NAME"         psql         -U "$POSTGRES_USER"         -d "$POSTGRES_DB"         -c "CREATE TABLE IF NOT EXISTS teste_instalador (id SERIAL PRIMARY KEY, nome VARCHAR(100));"
 
-  # Remove tabela temporária.
-  log "Removendo tabela temporária de teste..."
+    log "Inserindo registro de teste..."
 
-  docker exec \
-    "$POSTGRES_CONTAINER_NAME" \
-    psql \
-    -U "$POSTGRES_USER" \
-    -d "$POSTGRES_DB" \
-    -c "DROP TABLE teste_instalador;"
+    docker exec         "$POSTGRES_CONTAINER_NAME"         psql         -U "$POSTGRES_USER"         -d "$POSTGRES_DB"         -c "INSERT INTO teste_instalador(nome) VALUES ('teste de conexao');"
 
-  sucesso "Teste de conexão com PostgreSQL concluído com sucesso."
+    # --------------------------------------------------------
+    # Teste de leitura
+    # --------------------------------------------------------
+
+    log "Consultando registro de teste..."
+
+    docker exec         "$POSTGRES_CONTAINER_NAME"         psql         -U "$POSTGRES_USER"         -d "$POSTGRES_DB"         -c "SELECT * FROM teste_instalador;"
+
+    # --------------------------------------------------------
+    # Limpeza do ambiente
+    # --------------------------------------------------------
+
+    log "Removendo tabela temporária de teste..."
+
+    docker exec         "$POSTGRES_CONTAINER_NAME"         psql         -U "$POSTGRES_USER"         -d "$POSTGRES_DB"         -c "DROP TABLE teste_instalador;"
+
+    sucesso "Teste de conexão com PostgreSQL concluído com sucesso."
 }

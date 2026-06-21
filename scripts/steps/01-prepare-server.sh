@@ -1,127 +1,144 @@
 #!/bin/bash
 
 # ============================================================
-# Objetivo:
-# Preparar o Ubuntu Server para executar a aplicação em Docker.
+# Escalas Deploy - Preparação do Servidor
+# ============================================================
 #
-# Esta etapa faz:
-# - validação de permissão root/sudo;
-# - validação do Ubuntu;
+# Responsável por preparar o servidor Ubuntu para receber a
+# aplicação.
+#
+# Esta etapa garante que o ambiente esteja pronto para as
+# próximas fases da instalação, realizando:
+#
+# - validação de permissões;
+# - validação do sistema operacional;
 # - validação de conectividade;
-# - correção de dpkg pendente;
-# - atualização de pacotes;
-# - instalação de pacotes básicos;
-# - configuração do repositório oficial Docker;
+# - preparação do APT/dpkg;
+# - atualização dos pacotes;
+# - instalação das dependências básicas;
+# - configuração do repositório oficial do Docker;
 # - instalação do Docker Engine;
 # - instalação do Docker Compose;
-# - inicialização e validação do serviço Docker.
+# - validação do serviço Docker.
+#
 # ============================================================
 
-aguardar_apt_livre() {
-  # Aguarda caso outro processo esteja usando o apt/dpkg.
-  log "Verificando se o APT está livre..."
-
-  while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \
-        fuser /var/lib/dpkg/lock >/dev/null 2>&1 || \
-        fuser /var/cache/apt/archives/lock >/dev/null 2>&1; do
-    echo "APT/dpkg está em uso por outro processo. Aguardando 5 segundos..."
-    sleep 5
-  done
-}
-
-corrigir_dpkg() {
-  # Corrige instalações interrompidas anteriormente.
-  log "Verificando estado do dpkg..."
-
-  if dpkg --audit | grep -q .; then
-    echo "dpkg possui pendências. Corrigindo..."
-    dpkg --configure -a
-    apt-get install -f -y
-  else
-    echo "dpkg está íntegro."
-  fi
-}
-
 prepare_server() {
-  step "Validando permissões"
 
-  # O instalador precisa ser executado como root.
-  if [ "$(id -u)" -ne 0 ]; then
-    erro "Execute este script como root ou usando sudo. Exemplo: sudo ./install.sh"
-  fi
+    # --------------------------------------------------------
+    # Validação das permissões
+    # --------------------------------------------------------
 
-  step "Validando sistema operacional"
+    step "Validando permissões"
 
-  # Verifica se o arquivo de identificação do sistema existe.
-  if [ ! -f /etc/os-release ]; then
-    erro "Não foi possível identificar o sistema operacional."
-  fi
+    # O instalador precisa ser executado com privilégios de
+    # administrador para instalar pacotes e configurar serviços.
+    if [ "$(id -u)" -ne 0 ]; then
+        erro "Execute este script como root ou utilizando sudo. Exemplo: sudo ./install.sh"
+    fi
 
-  # Carrega informações do sistema operacional.
-  . /etc/os-release
+    # --------------------------------------------------------
+    # Validação do sistema operacional
+    # --------------------------------------------------------
 
-  # Garante que o sistema é Ubuntu.
-  if [ "${ID}" != "ubuntu" ]; then
-    erro "Este instalador foi preparado para Ubuntu Server. Sistema identificado: ${ID}"
-  fi
+    step "Validando sistema operacional"
 
-  echo "Sistema identificado: Ubuntu ${VERSION_ID} (${VERSION_CODENAME:-sem-codename})"
+    # Verifica se o sistema disponibiliza o arquivo de
+    # identificação da distribuição Linux.
+    if [ ! -f /etc/os-release ]; then
+        erro "Não foi possível identificar o sistema operacional."
+    fi
 
-  step "Validando conectividade"
+    # Carrega as informações do sistema operacional.
+    . /etc/os-release
 
-  # Valida acesso ao repositório Docker, que será usado na instalação.
-  log "Validando acesso ao repositório Docker..."
+    # O instalador foi desenvolvido exclusivamente para Ubuntu.
+    if [ "${ID}" != "ubuntu" ]; then
+        erro "Este instalador foi desenvolvido para Ubuntu Server. Sistema identificado: ${ID}"
+    fi
 
-  if ! curl -fsSL --connect-timeout 10 https://download.docker.com >/dev/null; then
-    erro "Não foi possível acessar https://download.docker.com. Verifique internet, DNS, proxy ou firewall."
-  fi
+    log "Sistema identificado: Ubuntu ${VERSION_ID} (${VERSION_CODENAME:-sem-codename})"
 
-  step "Preparando APT e dpkg"
+    # --------------------------------------------------------
+    # Validação de conectividade
+    # --------------------------------------------------------
 
-  # Aguarda apt/dpkg ficar livre.
-  aguardar_apt_livre
+    step "Validando conectividade"
 
-  # Corrige dpkg caso uma instalação anterior tenha sido interrompida.
-  corrigir_dpkg
+    # Verifica se o servidor consegue acessar o repositório
+    # oficial do Docker.
+    log "Validando acesso ao repositório oficial do Docker..."
 
-  step "Atualizando pacotes do sistema"
+    if ! curl -fsSL --connect-timeout 10 https://download.docker.com >/dev/null; then
+        erro "Não foi possível acessar https://download.docker.com. Verifique internet, DNS, proxy ou firewall."
+    fi
 
-  # Atualiza índice de pacotes.
-  apt-get update -y
+    # --------------------------------------------------------
+    # Preparação do APT e do dpkg
+    # --------------------------------------------------------
 
-  step "Instalando dependências básicas"
+    step "Preparando APT e dpkg"
 
-  # Instala ferramentas básicas para administração e instalação.
-  apt-get install -y \
-    ca-certificates \
-    curl \
-    gnupg \
-    lsb-release \
-    vim \
-    wget \
-    unzip \
-    net-tools \
-    htop \
-    jq \
-    nano \
-    tar
+    # Aguarda outros processos que possam estar utilizando
+    # o gerenciador de pacotes.
+    aguardar_apt_livre
 
-  step "Configurando repositório oficial do Docker"
+    # Corrige instalações interrompidas anteriormente.
+    corrigir_dpkg
 
-  # Cria diretório onde ficará a chave GPG do Docker.
-  install -m 0755 -d /etc/apt/keyrings
+    # --------------------------------------------------------
+    # Atualização dos pacotes
+    # --------------------------------------------------------
 
-  # Baixa chave GPG oficial do Docker caso ainda não exista.
-  if [ ! -f /etc/apt/keyrings/docker.asc ]; then
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
-      -o /etc/apt/keyrings/docker.asc
-  fi
+    step "Atualizando pacotes do sistema"
 
-  # Ajusta permissão de leitura da chave.
-  chmod a+r /etc/apt/keyrings/docker.asc
+    # Atualiza a lista de pacotes disponíveis.
+    apt-get update -y
 
-  # Cria arquivo de repositório Docker para o Ubuntu atual.
-  cat > /etc/apt/sources.list.d/docker.sources <<EOF
+    # --------------------------------------------------------
+    # Instalação das dependências básicas
+    # --------------------------------------------------------
+
+    step "Instalando dependências básicas"
+
+    # Instala ferramentas utilizadas durante o processo de
+    # instalação e administração do ambiente.
+    apt-get install -y \
+        ca-certificates \
+        curl \
+        gnupg \
+        lsb-release \
+        vim \
+        wget \
+        unzip \
+        net-tools \
+        htop \
+        jq \
+        nano \
+        tar
+
+    # --------------------------------------------------------
+    # Configuração do repositório oficial do Docker
+    # --------------------------------------------------------
+
+    step "Configurando repositório oficial do Docker"
+
+    # Cria o diretório que armazenará a chave GPG do Docker.
+    install -m 0755 -d /etc/apt/keyrings
+
+    # Baixa a chave oficial apenas quando ela ainda não existir.
+    if [ ! -f /etc/apt/keyrings/docker.asc ]; then
+
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+            -o /etc/apt/keyrings/docker.asc
+
+    fi
+
+    # Permite que o APT leia a chave GPG.
+    chmod a+r /etc/apt/keyrings/docker.asc
+
+    # Registra o repositório oficial do Docker.
+    cat > /etc/apt/sources.list.d/docker.sources <<EOF
 Types: deb
 URIs: https://download.docker.com/linux/ubuntu
 Suites: ${UBUNTU_CODENAME:-$VERSION_CODENAME}
@@ -130,39 +147,50 @@ Architectures: $(dpkg --print-architecture)
 Signed-By: /etc/apt/keyrings/docker.asc
 EOF
 
-  # Atualiza índice de pacotes já incluindo Docker.
-  apt-get update -y
+    # Atualiza novamente a lista de pacotes para incluir
+    # o repositório recém-configurado.
+    apt-get update -y
 
-  step "Instalando Docker Engine e Docker Compose"
+    # --------------------------------------------------------
+    # Instalação do Docker
+    # --------------------------------------------------------
 
-  # Instala Docker Engine, CLI, containerd, buildx e compose plugin.
-  apt-get install -y \
-    docker-ce \
-    docker-ce-cli \
-    containerd.io \
-    docker-buildx-plugin \
-    docker-compose-plugin
+    step "Instalando Docker Engine e Docker Compose"
 
-  step "Habilitando e iniciando Docker"
+    apt-get install -y \
+        docker-ce \
+        docker-ce-cli \
+        containerd.io \
+        docker-buildx-plugin \
+        docker-compose-plugin
 
-  # Habilita Docker para iniciar automaticamente com o servidor.
-  systemctl enable docker
+    # --------------------------------------------------------
+    # Inicialização do Docker
+    # --------------------------------------------------------
 
-  # Inicia o serviço Docker agora.
-  systemctl start docker
+    step "Habilitando e iniciando Docker"
 
-  step "Validando instalação do Docker"
+    # Configura o Docker para iniciar automaticamente com
+    # o sistema operacional.
+    systemctl enable docker
 
-  # Valida comando docker.
-  docker --version || erro "Docker não foi instalado corretamente."
+    # Inicia o serviço imediatamente.
+    systemctl start docker
 
-  # Valida docker compose.
-  docker compose version || erro "Docker Compose não foi instalado corretamente."
+    # --------------------------------------------------------
+    # Validação da instalação
+    # --------------------------------------------------------
 
-  # Valida status do serviço Docker.
-  if ! systemctl is-active --quiet docker; then
-    erro "O serviço Docker não está ativo."
-  fi
+    step "Validando instalação do Docker"
 
-  sucesso "Etapa de preparação do servidor concluída com sucesso."
+    docker --version || erro "Docker não foi instalado corretamente."
+
+    docker compose version || erro "Docker Compose não foi instalado corretamente."
+
+    if ! systemctl is-active --quiet docker; then
+        erro "O serviço Docker não está ativo."
+    fi
+
+    sucesso "Preparação do servidor concluída com sucesso."
+
 }

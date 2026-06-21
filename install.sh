@@ -3,42 +3,66 @@
 # ============================================================
 # Escalas Deploy
 # ============================================================
-# Objetivo:
-# Orquestrador principal do deploy automatizado.
+#
+# Arquivo responsável por iniciar o processo de instalação.
+#
+# Este script atua como o orquestrador principal do projeto,
+# executando cada etapa da instalação na ordem correta.
+#
+# Toda a lógica de negócio está implementada nos scripts da
+# pasta "scripts". Este arquivo apenas coordena a execução
+# dessas etapas, tornando o fluxo de instalação simples,
+# organizado e fácil de compreender.
+#
 # ============================================================
 
 set -Eeuo pipefail
 
+# Diretório raiz do projeto.
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Carrega toda a infraestrutura necessária para execução do
+# instalador (configurações, funções utilitárias e etapas).
 source "$BASE_DIR/scripts/core/bootstrap.sh"
 
 main() {
-  init_logging
-  print_header
 
-  cleanup_previous_execution
+    # Inicializa o sistema de logs e apresenta o cabeçalho.
+    init_logging
+    print_header
 
-  prepare_server
-  prepare_folders
+    # Remove instalações anteriores que possam interferir
+    # na nova execução.
+    cleanup_previous_execution
 
-  setup_postgres
-  test_postgres
+    # Prepara o servidor e cria a estrutura de diretórios.
+    prepare_server
+    prepare_folders
 
-  download_assets
-  restore_database
+    # Configura o PostgreSQL e valida a conexão.
+    setup_postgres
+    test_postgres
 
-  prepare_application
-  build_application_image
+    # Obtém os artefatos da aplicação e restaura o banco.
+    download_assets
+    restore_database
 
-  configure_compose
-  start_application
+    # Prepara a aplicação e constrói sua imagem Docker.
+    prepare_application
+    build_application_image
 
-  show_postgres_info
-  show_access_information
+    # Configura o ambiente Docker e inicia a aplicação.
+    configure_compose
+    start_application
 
-  sucesso "Escalas Deploy concluído com sucesso."
-  print_summary
+    # Exibe as informações necessárias para acesso ao ambiente.
+    show_postgres_info
+    show_access_information
+
+    sucesso "Escalas Deploy concluído com sucesso."
+
+    # Apresenta o resumo final da instalação.
+    print_summary
 }
 
 main "$@"

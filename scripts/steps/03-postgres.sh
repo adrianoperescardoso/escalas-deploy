@@ -1,26 +1,31 @@
 #!/bin/bash
 
 # ============================================================
-# Objetivo:
-# Configurar e inicializar o PostgreSQL da aplicação.
+# Escalas Deploy - PostgreSQL
+# ============================================================
 #
-# Nesta etapa:
-# - gera o arquivo .env usado pelo Docker Compose;
-# - grava as variáveis do PostgreSQL;
-# - grava as variáveis GeneXus GX_CONNECTION_*;
-# - gera um docker-compose.yml temporário apenas com PostgreSQL;
-# - baixa a imagem do PostgreSQL;
-# - inicia o container do banco;
-# - aguarda o banco ficar disponível;
-# - valida a conexão básica.
+# Responsável por preparar o ambiente PostgreSQL utilizado
+# pela aplicação.
 #
-# Observação importante:
-# O mesmo arquivo .env será usado depois pelo serviço da aplicação.
-# O Docker Compose injeta essas variáveis dentro do container,
-# e o Dockerfile usa envsubst para substituir os placeholders
-# ${GX_CONNECTION_*} dentro do appsettings.json.
+# Esta etapa realiza:
+# - geração do arquivo .env;
+# - geração do docker-compose.yml inicial;
+# - download da imagem PostgreSQL;
+# - inicialização do container;
+# - espera até que o banco esteja disponível;
+# - validação da inicialização;
+# - exibição das informações de acesso.
+#
+# Ao final desta etapa o PostgreSQL estará pronto para receber
+# a restauração do banco de dados nas próximas etapas.
 # ============================================================
 
+# ------------------------------------------------------------
+# Gera o arquivo .env utilizado pelo Docker Compose.
+#
+# Caso o arquivo já exista, ele é preservado para evitar a
+# perda de configurações personalizadas.
+# ------------------------------------------------------------
 generate_env_file() {
     step "Gerando arquivo .env"
 
@@ -51,12 +56,6 @@ APP_IMAGE=${APPLICATION_IMAGE}
 # ==========================================================
 # Variáveis de conexão da aplicação GeneXus
 # ==========================================================
-# Essas variáveis serão carregadas pelo Docker Compose no
-# container da aplicação.
-#
-# Durante a inicialização do container, o comando envsubst
-# trocará os placeholders do appsettings.json por estes valores.
-# ==========================================================
 
 GX_CONNECTION_DEFAULT_DB=escalas
 GX_CONNECTION_DEFAULT_DATASOURCE=postgres
@@ -72,10 +71,12 @@ GX_CONNECTION_GAM_PORT=5432
 EOF
 
     chmod 600 "$ENV_FILE"
-
     log "Arquivo .env criado."
 }
 
+# ------------------------------------------------------------
+# Gera um docker-compose.yml contendo apenas o PostgreSQL.
+# ------------------------------------------------------------
 generate_docker_compose_postgres() {
     step "Gerando docker-compose.yml"
 
@@ -87,7 +88,6 @@ generate_docker_compose_postgres() {
 name: escalas
 
 services:
-
   postgres:
     image: ${POSTGRES_IMAGE}
     container_name: ${POSTGRES_CONTAINER_NAME}
@@ -115,15 +115,16 @@ services:
 EOF
 
     chmod 644 "$COMPOSE_FILE"
-
     log "docker-compose.yml criado."
 }
 
+# ------------------------------------------------------------
+# Baixa a imagem PostgreSQL.
+# ------------------------------------------------------------
 pull_postgres_image() {
     step "Baixando imagem PostgreSQL"
 
     cd "$APP_DIR"
-
     source "$APP_DIR/.env"
 
     log "Baixando imagem: ${POSTGRES_IMAGE}"
@@ -131,11 +132,13 @@ pull_postgres_image() {
     docker compose -p "$PROJECT_NAME" pull postgres
 }
 
+# ------------------------------------------------------------
+# Inicializa o container PostgreSQL.
+# ------------------------------------------------------------
 start_postgres() {
     step "Inicializando PostgreSQL"
 
     cd "$APP_DIR"
-
     source "$APP_DIR/.env"
 
     log "Subindo container PostgreSQL..."
@@ -145,6 +148,9 @@ start_postgres() {
     fi
 }
 
+# ------------------------------------------------------------
+# Aguarda até que o PostgreSQL esteja apto para conexões.
+# ------------------------------------------------------------
 wait_postgres() {
     step "Aguardando PostgreSQL ficar disponível"
 
@@ -154,12 +160,7 @@ wait_postgres() {
     local contador=1
 
     while [ "$contador" -le "$tentativas" ]; do
-        if docker exec \
-            "$POSTGRES_CONTAINER_NAME" \
-            pg_isready \
-            -U "$POSTGRES_USER" \
-            -d "$POSTGRES_DB" >/dev/null 2>&1; then
-
+        if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
             log "PostgreSQL disponível."
             return
         fi
@@ -170,10 +171,12 @@ wait_postgres() {
     done
 
     docker logs "$POSTGRES_CONTAINER_NAME" || true
-
     erro "PostgreSQL não ficou disponível dentro do tempo esperado."
 }
 
+# ------------------------------------------------------------
+# Valida se o PostgreSQL iniciou corretamente.
+# ------------------------------------------------------------
 validate_postgres_basic() {
     step "Validando PostgreSQL"
 
@@ -197,6 +200,9 @@ validate_postgres_basic() {
     sucesso "PostgreSQL validado."
 }
 
+# ------------------------------------------------------------
+# Exibe as informações de acesso ao PostgreSQL.
+# ------------------------------------------------------------
 show_postgres_info() {
     source "$APP_DIR/.env"
 
@@ -234,6 +240,9 @@ show_postgres_info() {
     echo "============================================================"
 }
 
+# ------------------------------------------------------------
+# Executa toda a preparação do PostgreSQL.
+# ------------------------------------------------------------
 setup_postgres() {
     generate_env_file
     generate_docker_compose_postgres

@@ -1,16 +1,21 @@
 #!/bin/bash
 
 # ============================================================
-# Objetivo:
-# Subir a stack completa do Sistema Escalas.
+# Escalas Deploy - Inicialização da Aplicação
+# ============================================================
+#
+# Responsável por iniciar a stack completa do Sistema Escalas.
 #
 # Esta etapa:
-# - inicia PostgreSQL e aplicação via Docker Compose;
-# - valida se os containers estão em execução;
-# - exibe os logs da aplicação caso ela falhe.
+# - inicia os serviços definidos no Docker Compose;
+# - valida se a aplicação entrou em execução;
+# - exibe os logs caso ocorra alguma falha.
+#
+# Ao final desta etapa a aplicação estará disponível para uso.
 # ============================================================
 
 start_application() {
+
     step "Subindo aplicação via Docker Compose"
 
     start_docker_compose_stack
@@ -19,6 +24,9 @@ start_application() {
     sucesso "Aplicação iniciada com sucesso."
 }
 
+# ------------------------------------------------------------
+# Inicializa todos os serviços do Docker Compose.
+# ------------------------------------------------------------
 start_docker_compose_stack() {
 
     log "Iniciando serviços do Docker Compose..."
@@ -26,17 +34,20 @@ start_docker_compose_stack() {
     cd "$APP_DIR"
 
     docker compose -p "$PROJECT_NAME" up -d
-
 }
 
+# ------------------------------------------------------------
+# Valida se o container da aplicação iniciou corretamente.
+# ------------------------------------------------------------
 validate_application_container() {
 
     log "Validando container da aplicação..."
 
     if ! docker ps --format '{{.Names}}' | grep -q "^${APP_NAME}-app$"; then
+
         echo
         echo "Container da aplicação não está em execução."
-        echo "Exibindo logs:"
+        echo "Exibindo logs da aplicação..."
         echo
 
         docker logs "${APP_NAME}-app" 2>/dev/null || true

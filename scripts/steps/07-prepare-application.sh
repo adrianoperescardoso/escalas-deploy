@@ -1,24 +1,22 @@
 #!/bin/bash
 
 # ============================================================
-# Objetivo:
-# Preparar os arquivos da aplicação GeneXus para criação da
-# imagem Docker.
+# Escalas Deploy - Preparação da Aplicação
+# ============================================================
 #
-# Nesta etapa:
-# - valida se o pacote da aplicação existe;
-# - cria o diretório de build;
-# - remove arquivos antigos do build;
-# - descompacta a aplicação;
-# - localiza o appsettings.json gerado pelo GeneXus;
-# - transforma as configurações de conexão em variáveis;
-# - localiza o connection.gam gerado pelo GeneXus;
-# - transforma a chave do GAM em variável;
-# - valida os principais arquivos da aplicação.
+# Responsável por preparar os arquivos gerados pelo GeneXus
+# para a criação da imagem Docker.
 #
-# Esta etapa NÃO cria a imagem Docker.
-# Ela apenas deixa o pacote GeneXus pronto para ser usado pelo
-# Dockerfile na próxima etapa.
+# Esta etapa:
+# - valida o pacote da aplicação;
+# - prepara o diretório de build;
+# - extrai os arquivos;
+# - parametriza o appsettings.json;
+# - parametriza o connection.gam;
+# - valida a estrutura final da aplicação.
+#
+# Nenhuma imagem Docker é criada nesta etapa. O objetivo é
+# apenas deixar os artefatos prontos para a próxima fase.
 # ============================================================
 
 prepare_application() {

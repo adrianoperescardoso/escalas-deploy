@@ -1,120 +1,159 @@
 # Escalas Deploy
 
-## Objetivo
+> Instalador automatizado para aplicações GeneXus .NET em servidores
+> Ubuntu utilizando Docker.
 
-O Escalas Deploy é um projeto responsável por automatizar toda a implantação da aplicação Escalas em um servidor Ubuntu utilizando Docker.
+## Visão Geral
 
-O objetivo é permitir que qualquer pessoa execute o instalador e tenha um ambiente completamente configurado, sem necessidade de conhecimentos avançados em Linux, Docker, PostgreSQL ou GeneXus.
+O **Escalas Deploy** automatiza todo o processo de implantação da
+aplicação Escalas em um servidor Ubuntu limpo.
 
----
+Ao executar um único comando, o instalador prepara o servidor, instala
+as dependências, configura o PostgreSQL, restaura o banco de dados,
+prepara a aplicação, constrói a imagem Docker e inicializa todos os
+serviços necessários.
 
-## Funcionalidades
+O objetivo é tornar o processo de implantação **simples, padronizado,
+reproduzível e confiável**, dispensando conhecimentos avançados em
+Linux, Docker, PostgreSQL ou GeneXus.
 
-Atualmente o projeto realiza automaticamente:
+------------------------------------------------------------------------
 
-- Preparação do Ubuntu Server
-- Instalação do Docker Engine
-- Instalação do Docker Compose
-- Criação da estrutura de diretórios
-- Download dos artefatos da aplicação
-- Restauração automática do banco PostgreSQL
-- Parametrização automática do `appsettings.json`
-- Parametrização automática do `connection.gam`
-- Build da imagem Docker da aplicação
-- Configuração do Docker Compose
-- Inicialização da aplicação
-- Validação do ambiente
-- Exibição das informações de acesso ao final da instalação
+# Objetivos
 
----
+-   Automatizar a implantação da aplicação.
+-   Padronizar instalações.
+-   Eliminar configurações manuais.
+-   Reduzir erros operacionais.
+-   Facilitar futuras manutenções.
 
-## Estrutura do projeto
+------------------------------------------------------------------------
 
-```text
-escalas-deploy
-│
-├── app
-├── docker
-├── docs
-├── scripts
-│   ├── core
-│   ├── lib
-│   └── steps
-├── sql
-├── templates
-├── tmp
-├── install.sh
+# Arquitetura da Solução
+
+``` text
+Usuário
+   │
+   ▼
+install.sh
+   │
+   ├── Limpeza da execução anterior
+   ├── Preparação do servidor
+   ├── Estrutura de diretórios
+   ├── PostgreSQL
+   ├── Download dos artefatos
+   ├── Restauração do banco
+   ├── Preparação da aplicação
+   ├── Build da imagem Docker
+   ├── Docker Compose
+   └── Inicialização da aplicação
+```
+
+------------------------------------------------------------------------
+
+# Fluxo do Instalador
+
+    Etapa Descrição
+  ------- ------------------------------------
+       01 Limpeza de instalações anteriores
+       02 Preparação do servidor
+       03 Criação da estrutura de diretórios
+       04 Configuração do PostgreSQL
+       05 Teste de conexão com o banco
+       06 Download dos artefatos
+       07 Restauração do banco de dados
+       08 Preparação da aplicação
+       09 Build da imagem Docker
+       10 Configuração do Docker Compose
+       11 Inicialização da aplicação
+       12 Exibição das informações finais
+
+------------------------------------------------------------------------
+
+# Estrutura do Projeto
+
+``` text
+escalas-deploy/
+├── docker/          Arquivos para construção da imagem Docker
+├── docs/            Documentação do projeto
+├── scripts/
+│   ├── core/        Funções compartilhadas
+│   └── steps/       Etapas executadas pelo instalador
+├── install.sh       Orquestrador principal
 ├── README.md
 └── ROADMAP.md
 ```
 
----
+------------------------------------------------------------------------
+
+# Tecnologias
+
+-   Bash
+-   Docker
+-   Docker Compose
+-   PostgreSQL
+-   Ubuntu Server
+-   GitHub Releases
+-   GeneXus .NET
+
+------------------------------------------------------------------------
+
+# Requisitos
+
+-   Ubuntu Server 24.04 ou superior
+-   Acesso sudo
+-   Conexão com a Internet
+
+------------------------------------------------------------------------
 
 # Instalação
 
-## 1. Atualize os pacotes do sistema
-
-```bash
+``` bash
 sudo apt update
-```
-
-## 2. Instale o Git
-
-```bash
 sudo apt install -y git
-```
 
-## 3. Clone o projeto
-
-```bash
 git clone https://github.com/adrianoperescardoso/escalas-deploy.git
-```
-
-## 4. Acesse o diretório do projeto
-
-```bash
 cd escalas-deploy
-```
 
-## 5. Execute o instalador
-
-```bash
 sudo ./install.sh
 ```
 
-Ao final da instalação serão exibidas as informações de acesso à aplicação e ao banco de dados.
+------------------------------------------------------------------------
 
----
+# Resultado Esperado
 
-## Requisitos
+Ao término da instalação o ambiente estará preparado com:
 
-- Ubuntu Server 24.04 ou superior
-- Acesso sudo
-- Conexão com a Internet
+-   Docker Engine instalado.
+-   Docker Compose configurado.
+-   PostgreSQL em execução.
+-   Banco restaurado.
+-   Aplicação configurada.
+-   Imagem Docker construída.
+-   Containers iniciados.
+-   Informações de acesso exibidas ao usuário.
 
----
+------------------------------------------------------------------------
 
-## Roadmap
+# Roadmap
 
-### MVP
+## MVP
 
-- [x] Preparação do servidor
-- [x] Instalação do Docker
-- [x] Instalação do Docker Compose
-- [x] Criação da estrutura de diretórios
-- [x] Download dos artefatos
-- [x] Restauração automática do PostgreSQL
-- [x] Parametrização do appsettings.json
-- [x] Parametrização do connection.gam
-- [x] Build automático da imagem Docker
-- [x] Configuração do Docker Compose
-- [x] Inicialização automática da aplicação
-- [x] Exibição das informações de acesso
+-   [x] Preparação do servidor
+-   [x] Instalação do Docker
+-   [x] Instalação do Docker Compose
+-   [x] Estrutura de diretórios
+-   [x] Download dos artefatos
+-   [x] Restauração do PostgreSQL
+-   [x] Parametrização da aplicação
+-   [x] Build da imagem Docker
+-   [x] Configuração do Docker Compose
+-   [x] Inicialização da aplicação
 
-### Próximas versões
+## Próximas versões
 
-- [ ] Atualização automática
-- [ ] Backup automático
-- [ ] Rollback
-- [ ] Health Check
-- [ ] HTTPS
+-   [ ] Atualização automática
+-   [ ] Backup automático
+-   [ ] Rollback
+-   [ ] Health Check
+-   [ ] HTTPS

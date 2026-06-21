@@ -1,18 +1,23 @@
 #!/bin/bash
 
 # ============================================================
-# Objetivo:
-# Configurar o docker-compose.yml com PostgreSQL e aplicação.
+# Escalas Deploy - Docker Compose
+# ============================================================
+#
+# Responsável por gerar o docker-compose.yml definitivo da
+# instalação.
 #
 # Esta etapa:
-# - gera o docker-compose.yml final;
-# - mantém PostgreSQL e aplicação na mesma rede Docker;
-# - configura a aplicação para depender do PostgreSQL.
+# - configura os serviços PostgreSQL e aplicação;
+# - mantém ambos na mesma rede Docker;
+# - estabelece a dependência da aplicação em relação ao banco;
+# - valida a sintaxe do docker-compose.yml.
 #
-# Esta etapa NÃO inicia a aplicação.
+# A aplicação ainda não é iniciada nesta etapa.
 # ============================================================
 
 configure_compose() {
+
     step "Configurando Docker Compose da aplicação"
 
     generate_docker_compose_full
@@ -21,6 +26,9 @@ configure_compose() {
     sucesso "Docker Compose configurado com sucesso."
 }
 
+# ------------------------------------------------------------
+# Gera o docker-compose.yml utilizado pela instalação.
+# ------------------------------------------------------------
 generate_docker_compose_full() {
 
     log "Gerando docker-compose.yml completo..."
@@ -88,15 +96,17 @@ EOF
     log "docker-compose.yml completo gerado."
 }
 
+# ------------------------------------------------------------
+# Valida a estrutura do docker-compose.yml gerado.
+# ------------------------------------------------------------
 validate_docker_compose_full() {
 
     log "Validando docker-compose.yml..."
 
     cd "$APP_DIR"
 
-    if ! docker compose -p "$PROJECT_NAME" config >/dev/null; then
-        erro "docker-compose.yml inválido."
-    fi
+    docker compose -p "$PROJECT_NAME" config >/dev/null \
+        || erro "docker-compose.yml inválido."
 
     echo
     echo "============================================================"

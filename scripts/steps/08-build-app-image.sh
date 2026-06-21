@@ -1,19 +1,22 @@
 #!/bin/bash
 
 # ============================================================
-# Objetivo:
-# Criar a imagem Docker da aplicação Escalas.
+# Escalas Deploy - Build da Aplicação
+# ============================================================
+#
+# Responsável por criar a imagem Docker da aplicação Escalas.
 #
 # Esta etapa:
-# - valida se o Dockerfile existe;
-# - valida se os arquivos da aplicação foram extraídos;
+# - valida o Dockerfile;
+# - valida os arquivos preparados para o build;
 # - executa o docker build;
-# - confirma se a imagem foi criada.
+# - confirma que a imagem foi criada.
 #
-# Esta etapa NÃO inicia a aplicação.
+# A aplicação ainda não é iniciada nesta etapa.
 # ============================================================
 
 build_application_image() {
+
     step "Criando imagem Docker da aplicação"
 
     validate_application_dockerfile
@@ -24,30 +27,31 @@ build_application_image() {
     sucesso "Imagem Docker da aplicação criada com sucesso."
 }
 
+# ------------------------------------------------------------
+# Valida a existência do Dockerfile.
+# ------------------------------------------------------------
 validate_application_dockerfile() {
 
     log "Validando Dockerfile da aplicação..."
 
-    if [ ! -f "$APPLICATION_DOCKERFILE" ]; then
-        erro "Dockerfile da aplicação não encontrado: $APPLICATION_DOCKERFILE"
-    fi
-
+    [ -f "$APPLICATION_DOCKERFILE" ]         || erro "Dockerfile da aplicação não encontrado: $APPLICATION_DOCKERFILE"
 }
 
+# ------------------------------------------------------------
+# Valida os arquivos necessários para o build.
+# ------------------------------------------------------------
 validate_application_build_directory() {
 
     log "Validando diretório de build da aplicação..."
 
-    if [ ! -d "$APPLICATION_BUILD_DIR" ]; then
-        erro "Diretório de build da aplicação não encontrado: $APPLICATION_BUILD_DIR"
-    fi
+    [ -d "$APPLICATION_BUILD_DIR" ]         || erro "Diretório de build da aplicação não encontrado: $APPLICATION_BUILD_DIR"
 
-    if [ ! -f "$APPLICATION_BUILD_DIR/bin/GxNetCoreStartup.dll" ]; then
-        erro "Arquivo principal da aplicação não encontrado: $APPLICATION_BUILD_DIR/bin/GxNetCoreStartup.dll"
-    fi
-
+    [ -f "$APPLICATION_BUILD_DIR/bin/GxNetCoreStartup.dll" ]         || erro "Arquivo principal da aplicação não encontrado: $APPLICATION_BUILD_DIR/bin/GxNetCoreStartup.dll"
 }
 
+# ------------------------------------------------------------
+# Executa o build da imagem Docker.
+# ------------------------------------------------------------
 build_docker_image() {
 
     log "Executando docker build..."
@@ -56,20 +60,17 @@ build_docker_image() {
     echo "Contexto   : $APPLICATION_BUILD_DIR"
     echo "Imagem     : $APPLICATION_IMAGE"
 
-    docker build \
-        -t "$APPLICATION_IMAGE" \
-        -f "$APPLICATION_DOCKERFILE" \
-        "$APPLICATION_BUILD_DIR"
-
+    docker build         -t "$APPLICATION_IMAGE"         -f "$APPLICATION_DOCKERFILE"         "$APPLICATION_BUILD_DIR"
 }
 
+# ------------------------------------------------------------
+# Valida se a imagem foi criada com sucesso.
+# ------------------------------------------------------------
 validate_docker_image() {
 
     log "Validando imagem Docker criada..."
 
-    if ! docker image inspect "$APPLICATION_IMAGE" >/dev/null 2>&1; then
-        erro "Imagem Docker não foi encontrada após o build: $APPLICATION_IMAGE"
-    fi
+    docker image inspect "$APPLICATION_IMAGE" >/dev/null 2>&1         || erro "Imagem Docker não foi encontrada após o build: $APPLICATION_IMAGE"
 
     echo
     echo "============================================================"
@@ -78,5 +79,4 @@ validate_docker_image() {
     echo "Imagem : $APPLICATION_IMAGE"
     echo "============================================================"
     echo
-
 }
