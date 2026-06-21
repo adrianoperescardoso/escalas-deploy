@@ -55,13 +55,10 @@ main() {
     configure_compose
     start_application
 
-    # Exibe as informações necessárias para acesso ao ambiente.
+    # Exibe as informações do PostgreSQL.
     show_postgres_info
-    show_access_information
 
-    sucesso "Escalas Deploy concluído com sucesso."
-
-    # Apresenta o resumo final da instalação.
+    # Apresenta a tela final da instalação com destaque para a URL.
     print_summary
 }
 

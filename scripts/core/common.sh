@@ -194,65 +194,75 @@ get_host_ip() {
 }
 
 # ------------------------------------------------------------
-# Exibe as informações necessárias para acesso ao ambiente
-# após a conclusão da instalação.
+# Exibe a tela final da instalação.
+#
+# A URL da aplicação recebe destaque porque é a informação mais
+# importante para quem acabou de executar o instalador.
 # ------------------------------------------------------------
-show_access_information() {
+print_summary() {
 
     load_env_file
 
     local HOST_IP
+    local DOCKER_VERSION
+    local COMPOSE_VERSION
+    local EXECUTION_MODE
+
     HOST_IP="$(get_host_ip)"
+    DOCKER_VERSION="$(docker --version 2>/dev/null || echo 'não instalado')"
+    COMPOSE_VERSION="$(docker compose version 2>/dev/null || echo 'não instalado')"
+
+    if [ "$DEVELOPMENT_MODE" = true ]; then
+        EXECUTION_MODE="Desenvolvimento"
+    else
+        EXECUTION_MODE="Produção"
+    fi
 
     echo
-    echo "========================================"
-    echo " Informações de acesso"
-    echo "========================================"
+    echo "============================================================"
+    echo " Escalas Deploy concluído com sucesso!"
+    echo "============================================================"
     echo
-    echo "Aplicação"
-    echo "----------------------------------------"
-    echo "URL...............: http://${HOST_IP}:${APP_PORT:-8080}"
+    echo "A instalação foi concluída e a aplicação foi iniciada."
     echo
-    echo "PostgreSQL"
-    echo "----------------------------------------"
-    echo "Host..............: ${HOST_IP}"
-    echo "Porta.............: ${POSTGRES_PORT:-5432}"
-    echo "Banco.............: ${POSTGRES_DB:-escalas}"
-    echo "Usuário...........: ${POSTGRES_USER:-postgres}"
+    echo "============================================================"
+    echo " Acesso ao Sistema"
+    echo "============================================================"
     echo
-    echo "Docker"
-    echo "----------------------------------------"
-    echo "Projeto Compose...: ${PROJECT_NAME}"
-    echo "Imagem aplicação..: ${APPLICATION_IMAGE}"
+    echo "URL:"
     echo
-    echo "Arquivos"
-    echo "----------------------------------------"
-    echo "Diretório.........: ${APP_DIR}"
-    echo "Backup............: ${BACKUP_LOCAL_DIR}"
-    echo "Build.............: ${APPLICATION_BUILD_DIR}"
-    echo "Log...............: ${LOG_FILE}"
-    echo "========================================"
+    echo "    http://${HOST_IP}:${APP_PORT:-8080}"
     echo
-}
-
-# ------------------------------------------------------------
-# Exibe um resumo da instalação realizada.
-# ------------------------------------------------------------
-print_summary() {
-
+    echo "============================================================"
+    echo " Banco de Dados"
+    echo "============================================================"
     echo
-    echo "========================================"
-    echo " Resumo da instalação"
-    echo "========================================"
-    echo "Aplicação              : $APP_NAME"
-    echo "Projeto Docker Compose : $PROJECT_NAME"
-    echo "Diretório              : $APP_DIR"
-    echo "Modo desenvolvimento   : $DEVELOPMENT_MODE"
-    echo "Release GitHub         : $RELEASE_VERSION"
-    echo "Imagem aplicação       : $APPLICATION_IMAGE"
-    echo "Docker                 : $(docker --version 2>/dev/null || echo 'não instalado')"
-    echo "Docker Compose         : $(docker compose version 2>/dev/null || echo 'não instalado')"
-    echo "Log                    : $LOG_FILE"
-    echo "========================================"
+    printf "%-17s %s\n" "Host:" "$HOST_IP"
+    printf "%-17s %s\n" "Porta:" "${POSTGRES_PORT:-5432}"
+    printf "%-17s %s\n" "Banco:" "${POSTGRES_DB:-escalas}"
+    printf "%-17s %s\n" "Usuário:" "${POSTGRES_USER:-postgres}"
+    printf "%-17s %s\n" "Senha:" "${POSTGRES_PASSWORD:-postgres}"
+    echo
+    echo "============================================================"
+    echo " Arquivos"
+    echo "============================================================"
+    echo
+    printf "%-17s %s\n" "Instalação:" "$APP_DIR"
+    printf "%-17s %s\n" "Backup:" "$BACKUP_LOCAL_DIR"
+    printf "%-17s %s\n" "Build:" "$APPLICATION_BUILD_DIR"
+    printf "%-17s %s\n" "Log:" "$LOG_FILE"
+    echo
+    echo "============================================================"
+    echo " Informações Técnicas"
+    echo "============================================================"
+    echo
+    printf "%-17s %s\n" "Projeto:" "$PROJECT_NAME"
+    printf "%-17s %s\n" "Imagem:" "$APPLICATION_IMAGE"
+    printf "%-17s %s\n" "Release:" "$RELEASE_VERSION"
+    printf "%-17s %s\n" "Docker:" "$DOCKER_VERSION"
+    printf "%-17s %s\n" "Compose:" "$COMPOSE_VERSION"
+    printf "%-17s %s\n" "Modo:" "$EXECUTION_MODE"
+    echo
+    echo "============================================================"
     echo
 }
