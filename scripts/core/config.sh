@@ -29,7 +29,7 @@ DEVELOPMENT_MODE=true
 
 GITHUB_OWNER="adrianoperescardoso"
 GITHUB_REPOSITORY="escalas-deploy"
-RELEASE_VERSION="v1.0.0-beta"
+RELEASE_VERSION="v1.0.1"
 
 # ============================================================
 # Backup do PostgreSQL
