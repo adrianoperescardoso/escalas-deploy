@@ -54,17 +54,42 @@ download_database_backup() {
 
     log "Verificando backup do banco de dados..."
 
+    local TEMP_BACKUP_FILE="${BACKUP_LOCAL_FILE}.tmp"
+
     echo "Origem : $BACKUP_DOWNLOAD_URL"
     echo "Destino: $BACKUP_LOCAL_FILE"
 
     if [ -s "$BACKUP_LOCAL_FILE" ]; then
-        log "Backup já existe localmente. Download ignorado."
-        return
+
+        echo
+        echo "Foi encontrado um backup local:"
+        echo "$BACKUP_LOCAL_FILE"
+        echo
+
+        if ! confirmar "Deseja baixar o backup da release ${RELEASE_VERSION} e substituir o arquivo atual?"; then
+            log "O backup local será mantido. Download ignorado."
+            return
+        fi
     fi
 
     log "Baixando backup do banco de dados..."
 
-    wget -O "$BACKUP_LOCAL_FILE" "$BACKUP_DOWNLOAD_URL"         || erro "Falha ao baixar o backup do banco."
+    # O download é realizado em um arquivo temporário para evitar
+    # que uma falha de rede danifique o backup local existente.
+    rm -f "$TEMP_BACKUP_FILE"
+
+    if ! wget -O "$TEMP_BACKUP_FILE" "$BACKUP_DOWNLOAD_URL"; then
+        rm -f "$TEMP_BACKUP_FILE"
+        erro "Falha ao baixar o backup do banco. O arquivo anterior foi preservado."
+    fi
+
+    if [ ! -s "$TEMP_BACKUP_FILE" ]; then
+        rm -f "$TEMP_BACKUP_FILE"
+        erro "O backup baixado está vazio. O arquivo anterior foi preservado."
+    fi
+
+    mv -f "$TEMP_BACKUP_FILE" "$BACKUP_LOCAL_FILE"
+    chmod 600 "$BACKUP_LOCAL_FILE"
 
     log "Download do backup concluído."
 }
