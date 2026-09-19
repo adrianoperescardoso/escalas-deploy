@@ -100,10 +100,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+EOF
 
-    ports:
-      - "${POSTGRES_PORT}:5432"
+    append_postgres_port_mapping "$COMPOSE_FILE"
 
+    cat >> "$COMPOSE_FILE" <<'EOF'
     volumes:
       - ./postgres/data:/var/lib/postgresql/data
 
@@ -206,10 +207,8 @@ validate_postgres_basic() {
 show_postgres_info() {
     source "$APP_DIR/.env"
 
-    local HOST_IP
     local STATUS
 
-    HOST_IP=$(hostname -I | awk '{print $1}')
     STATUS=$(docker inspect -f '{{.State.Status}}' "$POSTGRES_CONTAINER_NAME" 2>/dev/null || echo "desconhecido")
 
     echo
@@ -222,13 +221,21 @@ show_postgres_info() {
 
     echo
     echo "============================================================"
-    echo " Dados para conexão (DBeaver)"
+    echo " Acesso ao PostgreSQL"
     echo "============================================================"
-    printf "%-20s %s\n" "Host:" "$HOST_IP"
-    printf "%-20s %s\n" "Porta:" "$POSTGRES_PORT"
+
+    if [ "$EXPOSE_POSTGRES" = true ]; then
+        printf "%-20s %s\n" "Modo:" "Acesso externo habilitado"
+        printf "%-20s %s\n" "Host:" "$(get_host_ip)"
+        printf "%-20s %s\n" "Porta:" "$POSTGRES_PORT"
+    else
+        printf "%-20s %s\n" "Modo:" "Somente rede Docker"
+        printf "%-20s %s\n" "Endereço interno:" "postgres:5432"
+    fi
+
     printf "%-20s %s\n" "Database:" "$POSTGRES_DB"
     printf "%-20s %s\n" "Usuário:" "$POSTGRES_USER"
-    printf "%-20s %s\n" "Senha:" "$POSTGRES_PASSWORD"
+    printf "%-20s %s\n" "Credenciais:" "$APP_DIR/.env"
 
     echo
     echo "============================================================"

@@ -134,6 +134,15 @@ sudo ./install.sh
     mantido. Ao responder `S`, o novo arquivo é baixado e validado antes da
     substituição.
 
+## Acesso ao PostgreSQL
+
+-   Durante a instalação, o usuário pode escolher se deseja disponibilizar o
+    PostgreSQL para acesso externo.
+-   Ao responder `N` ou apenas pressionar Enter, a porta `5432` não é publicada
+    no servidor e somente a aplicação consegue acessar o banco pela rede Docker.
+-   Ao responder `S`, a porta configurada em `POSTGRES_PORT` é publicada para
+    acesso externo. Essa opção exige firewall e uma senha forte em produção.
+
 ------------------------------------------------------------------------
 
 # Resultado Esperado

@@ -35,6 +35,10 @@ main() {
     # Em instalações existentes, o padrão é preservar os dados.
     define_database_restore_mode
 
+    # Define se o PostgreSQL poderá ser acessado externamente.
+    # A opção padrão é manter o banco somente na rede Docker.
+    define_postgres_exposure_mode
+
     # Remove instalações anteriores que possam interferir
     # na nova execução.
     cleanup_previous_execution

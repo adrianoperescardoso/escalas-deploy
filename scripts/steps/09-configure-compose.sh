@@ -52,10 +52,11 @@ services:
       POSTGRES_DB: \${POSTGRES_DB}
       POSTGRES_USER: \${POSTGRES_USER}
       POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
+EOF
 
-    ports:
-      - "\${POSTGRES_PORT}:5432"
+    append_postgres_port_mapping "$COMPOSE_FILE"
 
+    cat >> "$COMPOSE_FILE" <<EOF
     volumes:
       - ./postgres/data:/var/lib/postgresql/data
 
