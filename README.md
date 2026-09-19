@@ -9,9 +9,9 @@ O **Escalas Deploy** automatiza todo o processo de implantação da
 aplicação Escalas em um servidor Ubuntu limpo.
 
 Ao executar um único comando, o instalador prepara o servidor, instala
-as dependências, configura o PostgreSQL, restaura o banco de dados,
-prepara a aplicação, constrói a imagem Docker e inicializa todos os
-serviços necessários.
+as dependências, configura o PostgreSQL, decide se o banco de dados deve
+ser restaurado, prepara a aplicação, constrói a imagem Docker e inicializa
+todos os serviços necessários.
 
 O objetivo é tornar o processo de implantação **simples, padronizado,
 reproduzível e confiável**, dispensando conhecimentos avançados em
@@ -42,7 +42,7 @@ install.sh
    ├── Estrutura de diretórios
    ├── PostgreSQL
    ├── Download dos artefatos
-   ├── Restauração do banco
+   ├── Decisão e restauração opcional do banco
    ├── Preparação da aplicação
    ├── Build da imagem Docker
    ├── Docker Compose
@@ -61,7 +61,7 @@ install.sh
        04 Configuração do PostgreSQL
        05 Teste de conexão com o banco
        06 Download dos artefatos
-       07 Restauração do banco de dados
+       07 Restauração opcional do banco de dados
        08 Preparação da aplicação
        09 Build da imagem Docker
        10 Configuração do Docker Compose
@@ -118,6 +118,17 @@ cd escalas-deploy
 sudo ./install.sh
 ```
 
+## Comportamento da restauração do banco
+
+-   Na primeira instalação, quando ainda não existem dados locais do
+    PostgreSQL, o backup da release é restaurado automaticamente.
+-   Quando um banco existente é encontrado, o instalador pergunta se o
+    usuário deseja restaurá-lo.
+-   Ao responder `N` ou apenas pressionar Enter, o banco atual é preservado
+    e somente os artefatos da aplicação são atualizados.
+-   Ao responder `S`, o backup da release é restaurado e substitui os dados
+    atuais do banco.
+
 ------------------------------------------------------------------------
 
 # Resultado Esperado
@@ -127,7 +138,8 @@ Ao término da instalação o ambiente estará preparado com:
 -   Docker Engine instalado.
 -   Docker Compose configurado.
 -   PostgreSQL em execução.
--   Banco restaurado.
+-   Banco restaurado na primeira instalação ou preservado durante uma
+    atualização, conforme a escolha do usuário.
 -   Aplicação configurada.
 -   Imagem Docker construída.
 -   Containers iniciados.
@@ -145,6 +157,7 @@ Ao término da instalação o ambiente estará preparado com:
 -   [x] Estrutura de diretórios
 -   [x] Download dos artefatos
 -   [x] Restauração do PostgreSQL
+-   [x] Preservação opcional do banco durante atualizações
 -   [x] Parametrização da aplicação
 -   [x] Build da imagem Docker
 -   [x] Configuração do Docker Compose
