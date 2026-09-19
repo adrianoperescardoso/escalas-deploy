@@ -128,6 +128,11 @@ sudo ./install.sh
     e somente os artefatos da aplicação são atualizados.
 -   Ao responder `S`, o backup da release é restaurado e substitui os dados
     atuais do banco.
+-   Quando a restauração é escolhida e já existe um backup local, o instalador
+    pergunta se o usuário deseja baixar o backup da release e substituir o
+    arquivo existente. Ao responder `N` ou pressionar Enter, o backup local é
+    mantido. Ao responder `S`, o novo arquivo é baixado e validado antes da
+    substituição.
 
 ------------------------------------------------------------------------
 
