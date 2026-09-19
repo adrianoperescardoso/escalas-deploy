@@ -29,7 +29,7 @@ DEVELOPMENT_MODE=true
 
 GITHUB_OWNER="adrianoperescardoso"
 GITHUB_REPOSITORY="escalas-deploy"
-RELEASE_VERSION="V1.0.1"
+RELEASE_VERSION="V1.0.2"
 
 # ============================================================
 # Backup do PostgreSQL
@@ -46,7 +46,7 @@ BACKUP_LOCAL_FILE="${BACKUP_LOCAL_DIR}/${BACKUP_FILE_NAME}"
 # Artefatos da aplicação
 # ============================================================
 
-APPLICATION_PACKAGE_NAME="DeploymentUnit1_20260616181805.zip"
+APPLICATION_PACKAGE_NAME="DeploymentUnit1_20260919110639.zip"
 
 APPLICATION_DOWNLOAD_URL="https://github.com/${GITHUB_OWNER}/${GITHUB_REPOSITORY}/releases/download/${RELEASE_VERSION}/${APPLICATION_PACKAGE_NAME}"
 
