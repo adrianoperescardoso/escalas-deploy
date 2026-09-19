@@ -22,10 +22,8 @@ A primeira versão do projeto foi concluída com sucesso, contemplando todo o fl
 
 - [x] Inicialização do PostgreSQL via Docker
 - [x] Validação da conexão com o PostgreSQL
-- [x] Download automático do backup quando necessário
-- [x] Restauração automática do banco na primeira instalação
-- [x] Restauração opcional quando já existem dados
-- [x] Preservação do banco durante atualizações da aplicação
+- [x] Download automático do backup
+- [x] Restauração automática do banco de dados
 - [x] Validação da restauração
 
 ## Aplicação
