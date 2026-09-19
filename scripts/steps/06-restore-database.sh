@@ -21,7 +21,6 @@ restore_database() {
     validate_backup_file
     execute_database_restore
     validate_database_restore
-    configure_gam_connection_key
 
     sucesso "Restore do banco concluído com sucesso."
 }

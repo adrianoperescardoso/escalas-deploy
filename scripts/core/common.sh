@@ -128,6 +128,39 @@ confirmar() {
 }
 
 # ------------------------------------------------------------
+# Define se o banco de dados deve ser restaurado.
+#
+# Na primeira instalação, quando ainda não existem dados locais do
+# PostgreSQL, a restauração é obrigatória. Nas execuções seguintes,
+# o padrão é preservar o banco e atualizar somente a aplicação.
+# ------------------------------------------------------------
+define_database_restore_mode() {
+
+    local POSTGRES_DATA_DIR="$APP_DIR/postgres/data"
+
+    if [ ! -d "$POSTGRES_DATA_DIR" ] ||
+       [ -z "$(find "$POSTGRES_DATA_DIR" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+
+        RESTORE_DATABASE=true
+        log "Primeira instalação detectada. O banco será restaurado automaticamente."
+        return
+    fi
+
+    echo
+    echo "Foi encontrado um banco de dados existente."
+    echo
+
+    if confirmar "Deseja restaurar o banco utilizando o backup da release? ATENÇÃO: os dados atuais serão substituídos."; then
+        RESTORE_DATABASE=true
+        log "O banco existente será restaurado com o backup da release."
+    else
+        RESTORE_DATABASE=false
+        TOTAL_STEPS=$((TOTAL_STEPS - 1))
+        log "O banco atual será preservado. Somente a aplicação será atualizada."
+    fi
+}
+
+# ------------------------------------------------------------
 # Aguarda até que o gerenciador de pacotes (APT/dpkg)
 # esteja disponível para uso.
 # ------------------------------------------------------------
