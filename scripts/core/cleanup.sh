@@ -56,12 +56,7 @@ cleanup_development_mode() {
     docker rm -f "${PROJECT_NAME}-postgres" 2>/dev/null || true
     docker rm -f "minha-app-postgres" 2>/dev/null || true
 
-    if [ -d "$APP_DIR/postgres/data" ]; then
-        log "Limpando dados anteriores do PostgreSQL..."
-        rm -rf "$APP_DIR/postgres/data"/*
-    fi
-
-    log "Ambiente anterior limpo para nova execução."
+    log "Containers anteriores removidos. Os dados do PostgreSQL foram preservados."
 }
 
 cleanup_production_mode() {

@@ -23,8 +23,12 @@ download_assets() {
 
     create_assets_directories
 
-    download_database_backup
-    validate_database_backup
+    if [ "$RESTORE_DATABASE" = true ]; then
+        download_database_backup
+        validate_database_backup
+    else
+        log "Download do backup ignorado porque o banco atual será preservado."
+    fi
 
     download_application_package
     validate_application_package

@@ -23,6 +23,11 @@ LOG_FILE="/tmp/install-${APP_NAME}.log"
 
 DEVELOPMENT_MODE=true
 
+# Define se o backup da release deve ser restaurado. O valor final
+# será determinado no início da instalação conforme a existência de
+# dados do PostgreSQL e a escolha do usuário.
+RESTORE_DATABASE=false
+
 # ============================================================
 # GitHub Releases
 # ============================================================

@@ -31,6 +31,10 @@ main() {
     init_logging
     print_header
 
+    # Define se o banco será restaurado antes de qualquer limpeza.
+    # Em instalações existentes, o padrão é preservar os dados.
+    define_database_restore_mode
+
     # Remove instalações anteriores que possam interferir
     # na nova execução.
     cleanup_previous_execution
@@ -45,7 +49,14 @@ main() {
 
     # Obtém os artefatos da aplicação e restaura o banco.
     download_assets
-    restore_database
+
+    if [ "$RESTORE_DATABASE" = true ]; then
+        restore_database
+    fi
+
+    # A chave do GAM é necessária tanto após uma restauração quanto
+    # quando o banco existente é preservado.
+    configure_gam_connection_key
 
     # Prepara a aplicação e constrói sua imagem Docker.
     prepare_application
