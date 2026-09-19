@@ -28,6 +28,10 @@ DEVELOPMENT_MODE=true
 # dados do PostgreSQL e a escolha do usuário.
 RESTORE_DATABASE=false
 
+# Define se a porta do PostgreSQL será publicada no servidor.
+# Por padrão, o banco permanece acessível somente pela rede Docker.
+EXPOSE_POSTGRES=false
+
 # ============================================================
 # GitHub Releases
 # ============================================================

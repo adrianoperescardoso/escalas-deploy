@@ -161,6 +161,46 @@ define_database_restore_mode() {
 }
 
 # ------------------------------------------------------------
+# Define se a porta do PostgreSQL será publicada no servidor.
+#
+# A resposta padrão é negativa para manter o banco acessível
+# somente pelos containers da mesma rede Docker.
+# ------------------------------------------------------------
+define_postgres_exposure_mode() {
+
+    echo
+
+    if confirmar "Deseja disponibilizar o PostgreSQL para acesso externo?"; then
+        EXPOSE_POSTGRES=true
+
+        echo
+        echo "ATENÇÃO: o PostgreSQL será disponibilizado externamente."
+        echo "Utilize firewall e uma senha forte antes de usar esta opção em produção."
+        echo
+    else
+        EXPOSE_POSTGRES=false
+        log "O PostgreSQL ficará disponível somente para a aplicação."
+    fi
+}
+
+# ------------------------------------------------------------
+# Adiciona a publicação da porta do PostgreSQL ao Compose somente
+# quando o usuário autorizar o acesso externo.
+# ------------------------------------------------------------
+append_postgres_port_mapping() {
+
+    local COMPOSE_PATH="$1"
+
+    if [ "$EXPOSE_POSTGRES" = true ]; then
+        cat >> "$COMPOSE_PATH" <<'EOF'
+
+    ports:
+      - "${POSTGRES_PORT}:5432"
+EOF
+    fi
+}
+
+# ------------------------------------------------------------
 # Aguarda até que o gerenciador de pacotes (APT/dpkg)
 # esteja disponível para uso.
 # ------------------------------------------------------------
@@ -262,11 +302,17 @@ print_summary() {
     echo " Banco de Dados"
     echo "============================================================"
     echo
-    printf "%-17s %s\n" "Host:" "$HOST_IP"
-    printf "%-17s %s\n" "Porta:" "${POSTGRES_PORT:-5432}"
+    if [ "$EXPOSE_POSTGRES" = true ]; then
+        printf "%-17s %s\n" "Acesso:" "Externo"
+        printf "%-17s %s\n" "Host:" "$HOST_IP"
+        printf "%-17s %s\n" "Porta:" "${POSTGRES_PORT:-5432}"
+    else
+        printf "%-17s %s\n" "Acesso:" "Somente rede Docker"
+        printf "%-17s %s\n" "Endereço interno:" "postgres:5432"
+    fi
     printf "%-17s %s\n" "Banco:" "${POSTGRES_DB:-escalas}"
     printf "%-17s %s\n" "Usuário:" "${POSTGRES_USER:-postgres}"
-    printf "%-17s %s\n" "Senha:" "${POSTGRES_PASSWORD:-postgres}"
+    printf "%-17s %s\n" "Credenciais:" "$APP_DIR/.env"
     echo
     echo "============================================================"
     echo " Arquivos"
