@@ -67,7 +67,6 @@ Agora que o MVP foi concluído, o foco passa a ser a melhoria da qualidade do pr
 ## Funcionalidades
 
 - [ ] Atualização automática da aplicação
-- [ ] Testar em VM a instalação integrada e a restauração de um backup do PG Back Web
 - [ ] Rollback automático
 - [ ] Configuração via arquivo `.env`
 - [ ] Health Check da aplicação
