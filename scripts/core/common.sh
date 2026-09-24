@@ -322,6 +322,8 @@ print_summary() {
     printf "%-17s %s\n" "Backup:" "$BACKUP_LOCAL_DIR"
     printf "%-17s %s\n" "Build:" "$APPLICATION_BUILD_DIR"
     printf "%-17s %s\n" "Log:" "$LOG_FILE"
+    printf "%-17s %s\n" "PG Back Web:" "$PG_BACK_WEB_DIR"
+    printf "%-17s %s\n" "Credenciais:" "$PG_BACK_WEB_ENV_FILE"
     echo
     echo "============================================================"
     echo " Informações Técnicas"
@@ -333,6 +335,7 @@ print_summary() {
     printf "%-17s %s\n" "Docker:" "$DOCKER_VERSION"
     printf "%-17s %s\n" "Compose:" "$COMPOSE_VERSION"
     printf "%-17s %s\n" "Modo:" "$EXECUTION_MODE"
+    printf "%-17s %s\n" "Backup web:" "http://${PBW_BIND_IP:-127.0.0.1}:8085"
     echo
     echo "============================================================"
     echo " ACESSE O SISTEMA"

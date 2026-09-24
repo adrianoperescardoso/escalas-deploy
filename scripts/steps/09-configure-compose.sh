@@ -8,8 +8,8 @@
 # instalação.
 #
 # Esta etapa:
-# - configura os serviços PostgreSQL e aplicação;
-# - mantém ambos na mesma rede Docker;
+# - configura PostgreSQL, aplicação e PG Back Web;
+# - mantém os três serviços na mesma rede Docker;
 # - estabelece a dependência da aplicação em relação ao banco;
 # - valida a sintaxe do docker-compose.yml.
 #
@@ -90,6 +90,24 @@ EOF
 
     ports:
       - "\${APP_PORT}:8080"
+
+  pgbackweb:
+    image: ${PG_BACK_WEB_IMAGE}
+    container_name: ${APP_NAME}-pgbackweb
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    env_file:
+      - ./pgbackweb/.env
+
+    ports:
+      - "\${PBW_BIND_IP:-127.0.0.1}:8085:8085"
+
+    volumes:
+      - ./pgbackweb/backups:/backups
 EOF
 
     chmod 644 "$COMPOSE_FILE"
@@ -114,7 +132,7 @@ validate_docker_compose_full() {
     echo " Docker Compose configurado"
     echo "============================================================"
     echo "Arquivo : $APP_DIR/docker-compose.yml"
-    echo "Serviços: postgres, app"
+    echo "Serviços: postgres, app, pgbackweb"
     echo "Imagem  : $APPLICATION_IMAGE"
     echo "Porta   : APP_PORT -> 8080"
     echo "============================================================"

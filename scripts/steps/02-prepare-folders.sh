@@ -72,11 +72,15 @@ prepare_folders() {
 
     log "Ajustando proprietário dos diretórios..."
 
-    chown -R root:root "$APP_DIR"
+    # Nunca alterar recursivamente a propriedade do volume do PostgreSQL.
+    chown root:root "$APP_DIR" "$APP_DIR/backup" "$APP_DIR/logs" \
+        "$APP_DIR/postgres" "$APP_DIR/postgres/backup" "$APP_DIR/config"
 
     log "Ajustando permissões..."
 
-    chmod -R 755 "$APP_DIR"
+    # Uma atualização não pode tornar públicos .env, backups ou dados existentes.
+    chmod 755 "$APP_DIR" "$APP_DIR/backup" "$APP_DIR/logs" \
+        "$APP_DIR/postgres" "$APP_DIR/postgres/backup" "$APP_DIR/config"
 
     # --------------------------------------------------------
     # Validação

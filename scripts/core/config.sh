@@ -32,6 +32,11 @@ RESTORE_DATABASE=false
 # Por padrão, o banco permanece acessível somente pela rede Docker.
 EXPOSE_POSTGRES=false
 
+# O PG Back Web guarda suas credenciais fora do Compose e do Git.
+PG_BACK_WEB_DIR="${APP_DIR}/pgbackweb"
+PG_BACK_WEB_ENV_FILE="${PG_BACK_WEB_DIR}/.env"
+PG_BACK_WEB_IMAGE="eduardolat/pgbackweb:0.5.2"
+
 # ============================================================
 # GitHub Releases
 # ============================================================
@@ -79,5 +84,5 @@ APPLICATION_DOCKERFILE="${BASE_DIR}/docker/app/Dockerfile"
 # Controle da instalação
 # ============================================================
 
-TOTAL_STEPS=25
+TOTAL_STEPS=27
 CURRENT_STEP=0

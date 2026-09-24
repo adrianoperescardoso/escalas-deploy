@@ -46,7 +46,8 @@ install.sh
    ├── Preparação da aplicação
    ├── Build da imagem Docker
    ├── Docker Compose
-   └── Inicialização da aplicação
+   ├── Inicialização da aplicação
+   └── PG Back Web e agendamento de backups
 ```
 
 ------------------------------------------------------------------------
@@ -66,7 +67,8 @@ install.sh
        09 Build da imagem Docker
        10 Configuração do Docker Compose
        11 Inicialização da aplicação
-       12 Exibição das informações finais
+       12 Configuração do PG Back Web e da tarefa de backup
+       13 Exibição das informações finais
 
 ------------------------------------------------------------------------
 
@@ -143,6 +145,36 @@ sudo ./install.sh
 -   Ao responder `S`, a porta configurada em `POSTGRES_PORT` é publicada para
     acesso externo. Essa opção exige firewall e uma senha forte em produção.
 
+## PG Back Web
+
+O instalador inclui o PG Back Web 0.5.2 no mesmo `docker-compose.yml` da
+aplicação e do PostgreSQL. Ele cria o banco de configuração `pgbackweb`,
+um usuário próprio para esse banco, um usuário de leitura para o banco
+`escalas` e a conta inicial de administração da interface. Cadastra também
+uma tarefa de backup local a cada hora (`0 * * * *`, fuso
+`America/Porto_Velho`), com retenção de 60 dias. Os arquivos ficam em
+`/opt/escalas/pgbackweb/backups/escalas` no servidor.
+
+**Credenciais:** `/opt/escalas/pgbackweb/.env` (acessível ao administrador
+do servidor, permissão `600`). O arquivo lista os usuários, as senhas e
+as strings de conexão do banco de configuração e do banco Escalas, além
+do e-mail e da senha da interface web e da chave de criptografia.
+Preserve esse arquivo com o banco `pgbackweb`: perdê-lo pode impedir o
+acesso à interface e às conexões salvas. Não publique nem envie seu conteúdo
+para o repositório.
+
+Após o cadastro do administrador, a interface é publicada em
+`http://<IP-da-VM>:8085`. Para futuras instalações, o arquivo de
+credenciais e a tarefa cadastrada são reaproveitados. Os backups do
+banco `escalas` não incluem automaticamente o banco de configuração
+`pgbackweb`; inclua esse banco e o arquivo de credenciais em sua estratégia
+de recuperação do servidor.
+
+Se já existir um PG Back Web instalado separadamente em `/opt/pgbackweb`,
+é necessário migrar suas credenciais, banco de configuração e arquivos de
+backup antes de rodar esta versão do instalador. O instalador interrompe a
+execução ao detectar a instalação anterior para evitar substituí-la.
+
 ------------------------------------------------------------------------
 
 # Resultado Esperado
@@ -152,6 +184,7 @@ Ao término da instalação o ambiente estará preparado com:
 -   Docker Engine instalado.
 -   Docker Compose configurado.
 -   PostgreSQL em execução.
+-   PG Back Web integrado ao Compose, com conta inicial e backup agendado.
 -   Banco restaurado na primeira instalação ou preservado durante uma
     atualização, conforme a escolha do usuário.
 -   Aplicação configurada.
@@ -180,7 +213,7 @@ Ao término da instalação o ambiente estará preparado com:
 ## Próximas versões
 
 -   [ ] Atualização automática
--   [ ] Backup automático
+-   [ ] Validar backup automático em uma VM após a integração ao instalador
 -   [ ] Rollback
 -   [ ] Health Check
 -   [ ] HTTPS

@@ -31,6 +31,9 @@ main() {
     init_logging
     print_header
 
+    # Uma instalação manual antiga exige migração antes de parar a aplicação.
+    preflight_pgbackweb
+
     # Define se o banco será restaurado antes de qualquer limpeza.
     # Em instalações existentes, o padrão é preservar os dados.
     define_database_restore_mode
@@ -62,6 +65,9 @@ main() {
     # quando o banco existente é preservado.
     configure_gam_connection_key
 
+    # Prepara bancos, usuários e credenciais antes de gerar o Compose completo.
+    prepare_pgbackweb
+
     # Prepara a aplicação e constrói sua imagem Docker.
     prepare_application
     build_application_image
@@ -69,6 +75,7 @@ main() {
     # Configura o ambiente Docker e inicia a aplicação.
     configure_compose
     start_application
+    configure_pgbackweb
 
     # Exibe as informações do PostgreSQL.
     show_postgres_info

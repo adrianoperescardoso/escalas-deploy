@@ -23,6 +23,8 @@ debug/
 *~
 *.swp
 *.swo
+__pycache__/
+*.pyc
 
 # Arquivos gerados durante investigações
 localhost.txt
@@ -46,6 +48,7 @@ app/build/
 # ==========================================================
 app/assets/backup/
 sql/backup/
+pgbackweb/backups/
 
 # ==========================================================
 # Arquivos do sistema operacional
