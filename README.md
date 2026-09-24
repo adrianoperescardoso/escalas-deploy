@@ -227,7 +227,7 @@ Ao término da instalação o ambiente estará preparado com:
 
 ## Próximas versões
 
--   [ ] Atualização automática
+-   [ ] Atualização automática da aplicação com imagens Docker no registro do GitLab e implantação via Argo CD no Kubernetes
 -   [ ] Rollback
 -   [ ] Health Check
 -   [ ] HTTPS
