@@ -4,10 +4,10 @@
 # O arquivo de credenciais é criado uma vez e preservado nas atualizações.
 
 preflight_pgbackweb() {
-    if [ -f /opt/pgbackweb/.env ] && [ -f "$PG_BACK_WEB_ENV_FILE" ]; then
+    if [ -d /opt/pgbackweb ] && [ -f "$PG_BACK_WEB_ENV_FILE" ]; then
         erro "Foram encontradas duas instalações do PG Back Web. Identifique a instalação ativa antes de substituí-la."
     fi
-    if [ -f /opt/pgbackweb/.env ]; then
+    if [ -d /opt/pgbackweb ]; then
         echo
         echo "Foi encontrada uma instalação anterior do PG Back Web em /opt/pgbackweb."
         echo "Ao substituir, seus arquivos e, se estiver no PostgreSQL do EscalasPro,"
