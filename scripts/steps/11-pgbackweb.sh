@@ -79,6 +79,8 @@ replace_legacy_pgbackweb() {
 
     # Usuários SQL antigos serão reaproveitados com novas senhas, sem imprimir
     # nenhuma delas. O diretório arquivado contém as credenciais anteriores.
+    PBW_LEGACY_ARCHIVE="$archive"
+    PBW_LEGACY_DATABASE_DUMP="$metadata_exists"
     log "Instalação anterior preservada em $archive."
 }
 
@@ -89,6 +91,24 @@ prepare_pgbackweb() {
     source "$APP_DIR/.env"
     install -d -m 700 "$PG_BACK_WEB_DIR"
     install -d -m 700 "$PG_BACK_WEB_DIR/backups"
+
+    if [ -n "${PBW_LEGACY_ARCHIVE:-}" ]; then
+        local reference_file="${PG_BACK_WEB_DIR}/INSTALACAO_ANTERIOR.txt"
+        {
+            echo "Diretório da instalação anterior: $PBW_LEGACY_ARCHIVE"
+            echo "Credenciais anteriores (se existirem): $PBW_LEGACY_ARCHIVE/.env"
+            echo "Backups anteriores (se existirem): $PBW_LEGACY_ARCHIVE/backups"
+            if [ "$PBW_LEGACY_DATABASE_DUMP" = 1 ]; then
+                echo "Dump do banco pgbackweb anterior: $PBW_LEGACY_ARCHIVE/pgbackweb-antes-integracao.dump"
+                echo "Para analisar os dados antigos, restaure esse dump em um banco de teste."
+            else
+                echo "Banco pgbackweb anterior não encontrado no PostgreSQL do EscalasPro."
+                echo "Verifique a conexão antiga no arquivo de credenciais anterior."
+            fi
+        } > "$reference_file"
+        chmod 600 "$reference_file"
+        log "Caminhos da instalação anterior registrados em $reference_file."
+    fi
 
     if [ ! -f "$PG_BACK_WEB_ENV_FILE" ]; then
         # Evita assumir o controle de uma instalação anterior sem suas credenciais.

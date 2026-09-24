@@ -181,6 +181,11 @@ cria uma configuração nova e guarda as credenciais correspondentes em
 preservado, mas não aparecerão automaticamente na nova interface. Se o
 banco de configuração anterior estiver em outro PostgreSQL, a migração
 desse banco deve ser tratada separadamente antes de confirmar a substituição.
+O caminho exato do arquivo anterior aparece no resumo final e fica registrado
+em `/opt/escalas/pgbackweb/INSTALACAO_ANTERIOR.txt`, junto com os caminhos
+das credenciais antigas, dos backups e do dump do banco antigo, quando gerado.
+O administrador do servidor pode restaurar esse dump em um banco de teste
+para consultar os dados anteriores, sem alterar o novo banco `pgbackweb`.
 
 ------------------------------------------------------------------------
 
