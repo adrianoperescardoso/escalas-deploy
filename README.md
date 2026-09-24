@@ -172,6 +172,15 @@ banco `escalas` não incluem automaticamente o banco de configuração
 `pgbackweb`; inclua esse banco e o arquivo de credenciais em sua estratégia
 de recuperação do servidor.
 
+Ao executar novamente o instalador com o PG Back Web já integrado em
+`/opt/escalas/pgbackweb`, será perguntado se deseja uma instalação nova.
+Responder `N` preserva as credenciais e os backups existentes e atualiza a
+tarefa horária anterior para a frequência diária. Responder `S` arquiva a
+instalação atual em `/opt/escalas/pgbackweb-antes-reinstalacao-<data>`,
+salva um dump do banco `pgbackweb` anterior e cria uma conta e uma tarefa
+novas. A localização exata aparece no resumo e no arquivo de referência
+descrito abaixo.
+
 Se já existir um PG Back Web instalado separadamente em `/opt/pgbackweb`,
 o instalador perguntará se deseja substituí-lo (o padrão é cancelar).
 Ao confirmar, ele arquiva a instalação anterior em

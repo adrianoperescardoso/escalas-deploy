@@ -25,6 +25,18 @@ preflight_pgbackweb() {
         fi
     fi
 
+    if [ -f "$PG_BACK_WEB_ENV_FILE" ]; then
+        echo
+        echo "PG Back Web já configurado em $PG_BACK_WEB_DIR."
+        echo "Uma atualização preserva usuários, backups e configurações."
+        echo "Uma nova instalação arquiva os dados atuais e cria credenciais novas."
+        if confirmar "Deseja fazer uma nova instalação do PG Back Web?"; then
+            PG_BACK_WEB_REPLACE_CURRENT=true
+        else
+            log "Instalação existente será preservada; o agendamento será verificado."
+        fi
+    fi
+
     # Detecta também instalações anteriores cujo Compose não está mais no disco.
     if [ "${PG_BACK_WEB_REPLACE_LEGACY:-false}" != true ] \
         && [ ! -f "$PG_BACK_WEB_ENV_FILE" ] && command -v docker >/dev/null 2>&1 \
@@ -38,13 +50,22 @@ preflight_pgbackweb() {
 }
 
 replace_legacy_pgbackweb() {
-    [ "${PG_BACK_WEB_REPLACE_LEGACY:-false}" = true ] || return 0
+    if [ "${PG_BACK_WEB_REPLACE_LEGACY:-false}" != true ] \
+        && [ "${PG_BACK_WEB_REPLACE_CURRENT:-false}" != true ]; then
+        return 0
+    fi
 
     # Confirma que será possível parar apenas o serviço antigo, sem parar
     # o PostgreSQL compartilhado com o EscalasPro.
-    local archive metadata_exists
+    local archive metadata_exists previous_dir
 
-    archive="/opt/pgbackweb-antes-integracao-$(date +%Y%m%d-%H%M%S)"
+    if [ "${PG_BACK_WEB_REPLACE_CURRENT:-false}" = true ]; then
+        previous_dir="$PG_BACK_WEB_DIR"
+        archive="${PG_BACK_WEB_DIR}-antes-reinstalacao-$(date +%Y%m%d-%H%M%S)"
+    else
+        previous_dir=/opt/pgbackweb
+        archive="/opt/pgbackweb-antes-integracao-$(date +%Y%m%d-%H%M%S)"
+    fi
     [ ! -e "$archive" ] || erro "Já existe o arquivo de preservação $archive."
 
     metadata_exists=$(docker exec "$POSTGRES_CONTAINER_NAME" sh -c \
@@ -56,17 +77,24 @@ replace_legacy_pgbackweb() {
         # antigos. O banco só será substituído após a cópia ser verificada.
         docker exec "$POSTGRES_CONTAINER_NAME" sh -c \
             'pg_dump -Fc -U "$POSTGRES_USER" -d pgbackweb' \
-            > /opt/pgbackweb/pgbackweb-antes-integracao.dump \
+            > "$previous_dir/pgbackweb-antes-integracao.dump" \
             || erro "Falha ao preservar o banco pgbackweb. A instalação anterior foi mantida."
-        chmod 600 /opt/pgbackweb/pgbackweb-antes-integracao.dump
+        chmod 600 "$previous_dir/pgbackweb-antes-integracao.dump"
         docker exec -i "$POSTGRES_CONTAINER_NAME" pg_restore -l \
-            < /opt/pgbackweb/pgbackweb-antes-integracao.dump >/dev/null \
+            < "$previous_dir/pgbackweb-antes-integracao.dump" >/dev/null \
             || erro "O dump anterior não passou na verificação. A instalação anterior foi mantida."
     fi
 
-    (cd /opt/pgbackweb && docker compose stop pgbackweb) \
-        || erro "Não foi possível parar o PG Back Web anterior. Dados anteriores preservados."
-    mv /opt/pgbackweb "$archive" \
+    if [ "${PG_BACK_WEB_REPLACE_LEGACY:-false}" = true ]; then
+        (cd "$previous_dir" && docker compose stop pgbackweb) \
+            || erro "Não foi possível parar o PG Back Web anterior. Dados anteriores preservados."
+    elif docker inspect "${APP_NAME}-pgbackweb" >/dev/null 2>&1; then
+        docker stop "${APP_NAME}-pgbackweb" >/dev/null \
+            || erro "Não foi possível parar o PG Back Web atual. Dados anteriores preservados."
+        docker rm "${APP_NAME}-pgbackweb" >/dev/null \
+            || erro "Não foi possível remover o contêiner antigo. Dados anteriores preservados."
+    fi
+    mv "$previous_dir" "$archive" \
         || erro "Não foi possível arquivar a instalação anterior. Banco anterior preservado."
     chmod 700 "$archive"
     [ -f "$archive/.env" ] && chmod 600 "$archive/.env"
@@ -91,6 +119,16 @@ prepare_pgbackweb() {
     source "$APP_DIR/.env"
     install -d -m 700 "$PG_BACK_WEB_DIR"
     install -d -m 700 "$PG_BACK_WEB_DIR/backups"
+
+    # Durante a criação do novo administrador, exponha a interface só na VM.
+    # O IP anterior é restaurado após o provisionamento, inclusive numa retomada.
+    local bind_marker="${PG_BACK_WEB_DIR}/BIND_IP_PENDENTE"
+    if [ "${PG_BACK_WEB_REPLACE_CURRENT:-false}" = true ] \
+        && grep -q '^PBW_BIND_IP=' "$APP_DIR/.env"; then
+        printf '%s\n' "$PBW_BIND_IP" > "$bind_marker"
+        chmod 600 "$bind_marker"
+        update_env_variable PBW_BIND_IP 127.0.0.1
+    fi
 
     if [ -n "${PBW_LEGACY_ARCHIVE:-}" ]; then
         local reference_file="${PG_BACK_WEB_DIR}/INSTALACAO_ANTERIOR.txt"
@@ -118,7 +156,8 @@ prepare_pgbackweb() {
             "SELECT count(*) FROM pg_database WHERE datname = 'pgbackweb'" | tr -d '[:space:]')
         [ "$existing" = 0 ] || erro "O banco pgbackweb já existe, mas $PG_BACK_WEB_ENV_FILE não existe. Migre as credenciais antes de continuar."
 
-        if [ "${PG_BACK_WEB_REPLACE_LEGACY:-false}" != true ]; then
+        if [ "${PG_BACK_WEB_REPLACE_LEGACY:-false}" != true ] \
+            && [ "${PG_BACK_WEB_REPLACE_CURRENT:-false}" != true ]; then
             existing=$(docker exec "$POSTGRES_CONTAINER_NAME" psql -X -At \
                 -U "$POSTGRES_USER" -d postgres -c \
                 "SELECT count(*) FROM pg_roles WHERE rolname IN ('pgbackweb', 'escalas_backup')" | tr -d '[:space:]')
@@ -223,7 +262,14 @@ configure_pgbackweb() {
         || erro "Não foi possível configurar o PG Back Web. Credenciais preservadas em $PG_BACK_WEB_ENV_FILE."
 
     # Publica a interface na rede da VM somente após a criação do usuário.
-    if ! grep -q '^PBW_BIND_IP=' "$APP_DIR/.env"; then
+    if [ -f "$PG_BACK_WEB_DIR/BIND_IP_PENDENTE" ]; then
+        local previous_bind_ip
+        previous_bind_ip=$(cat "$PG_BACK_WEB_DIR/BIND_IP_PENDENTE")
+        update_env_variable PBW_BIND_IP "$previous_bind_ip"
+        cd "$APP_DIR"
+        docker compose -p "$PROJECT_NAME" up -d --no-deps pgbackweb
+        rm "$PG_BACK_WEB_DIR/BIND_IP_PENDENTE"
+    elif ! grep -q '^PBW_BIND_IP=' "$APP_DIR/.env"; then
         local host_ip
         host_ip=$(get_host_ip)
         [ -n "$host_ip" ] || erro "Não foi possível identificar o IP da VM para publicar o PG Back Web."
