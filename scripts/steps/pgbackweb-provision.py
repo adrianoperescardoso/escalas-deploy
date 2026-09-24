@@ -12,6 +12,11 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+DAILY_NAME = "EscalasPro - backup diario"
+HOURLY_NAME = "EscalasPro - backup horario"
+DAILY_CRON = "0 2 * * *"
+HOURLY_CRON = "0 * * * *"
+
 
 def credentials(path):
     result = {}
@@ -41,6 +46,19 @@ def post(opener, base, path, fields):
         response.read()
 
 
+def matching_backup_count(container, postgres_user, name, cron):
+    # Os nomes e expressões usados aqui são constantes internas, não entrada do usuário.
+    return query(container, postgres_user, "pgbackweb", f"""
+        SELECT count(*) FROM backups b JOIN databases d ON d.id = b.database_id
+        WHERE b.name = '{name}' AND d.name = 'EscalasPro'
+          AND b.is_local AND b.is_active AND b.cron_expression = '{cron}'
+          AND b.time_zone = 'America/Porto_Velho' AND b.dest_dir = '/escalas'
+          AND b.retention_days = 60 AND NOT b.opt_data_only AND NOT b.opt_schema_only
+          AND NOT b.opt_clean AND NOT b.opt_if_exists AND NOT b.opt_create
+          AND NOT b.opt_no_comments
+    """)
+
+
 def main():
     env_file, container, postgres_user, base = sys.argv[1:]
     env = credentials(env_file)
@@ -61,19 +79,18 @@ def main():
 
     db_count = query(container, postgres_user, "pgbackweb",
                      "SELECT count(*) FROM databases WHERE name = 'EscalasPro'")
-    backup_count = query(container, postgres_user, "pgbackweb",
-                         "SELECT count(*) FROM backups WHERE name = 'EscalasPro - backup horario'")
-    desired_backup_count = query(container, postgres_user, "pgbackweb", """
-        SELECT count(*) FROM backups b JOIN databases d ON d.id = b.database_id
-        WHERE b.name = 'EscalasPro - backup horario' AND d.name = 'EscalasPro'
-          AND b.is_local AND b.is_active AND b.cron_expression = '0 * * * *'
-          AND b.time_zone = 'America/Porto_Velho' AND b.dest_dir = '/escalas'
-          AND b.retention_days = 60 AND NOT b.opt_data_only AND NOT b.opt_schema_only
-    """)
-    if backup_count != "0" and desired_backup_count != backup_count:
-        raise RuntimeError("a tarefa existente tem parâmetros diferentes; revise-a na interface")
-    if db_count != "0" and backup_count != "0":
-        print("Banco e tarefa de backup já cadastrados; configurações preservadas.")
+    daily_count = query(container, postgres_user, "pgbackweb",
+                        f"SELECT count(*) FROM backups WHERE name = '{DAILY_NAME}'")
+    hourly_count = query(container, postgres_user, "pgbackweb",
+                         f"SELECT count(*) FROM backups WHERE name = '{HOURLY_NAME}'")
+    if int(daily_count) > 1 or int(hourly_count) > 1 or (daily_count != "0" and hourly_count != "0"):
+        raise RuntimeError("há tarefas de backup duplicadas; revise-as na interface")
+    if daily_count != "0" and matching_backup_count(container, postgres_user, DAILY_NAME, DAILY_CRON) != "1":
+        raise RuntimeError("a tarefa diária existente tem parâmetros diferentes; revise-a na interface")
+    if hourly_count != "0" and matching_backup_count(container, postgres_user, HOURLY_NAME, HOURLY_CRON) != "1":
+        raise RuntimeError("a tarefa horária existente tem parâmetros diferentes; revise-a na interface")
+    if db_count != "0" and daily_count == "1":
+        print("Banco e backup diário já cadastrados; configurações preservadas.")
         return
 
     post(opener, base, "/auth/login", {
@@ -94,26 +111,28 @@ def main():
             raise RuntimeError("não foi possível cadastrar o banco EscalasPro")
         print("Conexão com EscalasPro cadastrada.")
 
-    if backup_count == "0":
-        database_id = query(container, postgres_user, "pgbackweb",
-                            "SELECT id FROM databases WHERE name = 'EscalasPro'")
+    if daily_count == "0":
         fields = {
-            "name": "EscalasPro - backup horario", "database_id": database_id,
-            "is_local": "true", "cron_expression": "0 * * * *",
+            "name": DAILY_NAME, "cron_expression": DAILY_CRON,
             "time_zone": "America/Porto_Velho", "is_active": "true",
             "dest_dir": "/escalas", "retention_days": "60",
         }
         for option in ("data_only", "schema_only", "clean", "if_exists", "create", "no_comments"):
             fields["opt_" + option] = "false"
-        post(opener, base, "/dashboard/backups", fields)
-        found = query(container, postgres_user, "pgbackweb", """
-            SELECT count(*) FROM backups WHERE name = 'EscalasPro - backup horario'
-              AND is_active AND is_local AND cron_expression = '0 * * * *'
-              AND retention_days = 60 AND dest_dir = '/escalas'
-        """)
-        if found != "1":
-            raise RuntimeError("não foi possível ativar a tarefa de backup")
-        print("Backup horário ativado com retenção de 60 dias.")
+        if hourly_count == "1":
+            backup_id = query(container, postgres_user, "pgbackweb",
+                              f"SELECT id FROM backups WHERE name = '{HOURLY_NAME}'")
+            post(opener, base, f"/dashboard/backups/{backup_id}/edit", fields)
+            message = "Backup horário atualizado para execução diária."
+        else:
+            database_id = query(container, postgres_user, "pgbackweb",
+                                "SELECT id FROM databases WHERE name = 'EscalasPro'")
+            fields.update({"database_id": database_id, "is_local": "true"})
+            post(opener, base, "/dashboard/backups", fields)
+            message = "Backup diário ativado com retenção de 60 dias."
+        if matching_backup_count(container, postgres_user, DAILY_NAME, DAILY_CRON) != "1":
+            raise RuntimeError("não foi possível ativar a tarefa de backup diário")
+        print(message)
 
 
 if __name__ == "__main__":

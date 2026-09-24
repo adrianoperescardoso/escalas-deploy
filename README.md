@@ -151,8 +151,10 @@ O instalador inclui o PG Back Web 0.5.2 no mesmo `docker-compose.yml` da
 aplicação e do PostgreSQL. Ele cria o banco de configuração `pgbackweb`,
 um usuário próprio para esse banco, um usuário de leitura para o banco
 `escalas` e a conta inicial de administração da interface. Cadastra também
-uma tarefa de backup local a cada hora (`0 * * * *`, fuso
-`America/Porto_Velho`), com retenção de 60 dias. Os arquivos ficam em
+uma tarefa de backup local uma vez ao dia, às 02h (`0 2 * * *`, fuso
+`America/Porto_Velho`), com retenção de 60 dias. Se houver uma tarefa horária
+criada pelo instalador anterior, ela será atualizada para a frequência diária.
+Os arquivos ficam em
 `/opt/escalas/pgbackweb/backups/escalas` no servidor.
 
 **Credenciais:** `/opt/escalas/pgbackweb/.env` (acessível ao administrador
@@ -225,8 +227,7 @@ Ao término da instalação o ambiente estará preparado com:
 
 ## Próximas versões
 
--   [ ] Atualização automática
--   [ ] Testar a instalação integrada e a restauração de um backup em VM
+-   [ ] Atualização automática da aplicação com imagens Docker no registro do GitLab e implantação via Argo CD no Kubernetes
 -   [ ] Rollback
 -   [ ] Health Check
 -   [ ] HTTPS
