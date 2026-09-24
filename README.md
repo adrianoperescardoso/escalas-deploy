@@ -221,11 +221,12 @@ Ao término da instalação o ambiente estará preparado com:
 -   [x] Build da imagem Docker
 -   [x] Configuração do Docker Compose
 -   [x] Inicialização da aplicação
+-   [x] Integração do PG Back Web ao instalador e configuração do backup automático
 
 ## Próximas versões
 
 -   [ ] Atualização automática
--   [ ] Validar backup automático em uma VM após a integração ao instalador
+-   [ ] Testar a instalação integrada e a restauração de um backup em VM
 -   [ ] Rollback
 -   [ ] Health Check
 -   [ ] HTTPS

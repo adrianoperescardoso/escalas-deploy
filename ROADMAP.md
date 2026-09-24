@@ -25,6 +25,7 @@ A primeira versão do projeto foi concluída com sucesso, contemplando todo o fl
 - [x] Download automático do backup
 - [x] Restauração automática do banco de dados
 - [x] Validação da restauração
+- [x] Integração do PG Back Web ao instalador e configuração do backup automático
 
 ## Aplicação
 
@@ -66,7 +67,7 @@ Agora que o MVP foi concluído, o foco passa a ser a melhoria da qualidade do pr
 ## Funcionalidades
 
 - [ ] Atualização automática da aplicação
-- [ ] Validar em VM o backup automático do PostgreSQL integrado ao instalador
+- [ ] Testar em VM a instalação integrada e a restauração de um backup do PG Back Web
 - [ ] Rollback automático
 - [ ] Configuração via arquivo `.env`
 - [ ] Health Check da aplicação
