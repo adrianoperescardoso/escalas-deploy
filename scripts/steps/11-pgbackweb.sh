@@ -4,12 +4,30 @@
 # O arquivo de credenciais é criado uma vez e preservado nas atualizações.
 
 preflight_pgbackweb() {
+    if [ -f /opt/pgbackweb/.env ] && [ -f "$PG_BACK_WEB_ENV_FILE" ]; then
+        erro "Foram encontradas duas instalações do PG Back Web. Identifique a instalação ativa antes de substituí-la."
+    fi
     if [ -f /opt/pgbackweb/.env ]; then
-        erro "Existe uma instalação anterior em /opt/pgbackweb. Migre seu banco, suas credenciais e backups e desative o serviço anterior antes de executar este instalador."
+        echo
+        echo "Foi encontrada uma instalação anterior do PG Back Web em /opt/pgbackweb."
+        echo "Ao substituir, seus arquivos e, se estiver no PostgreSQL do EscalasPro,"
+        echo "uma cópia do banco de configuração serão arquivados."
+        echo "A nova interface terá outro usuário e senha."
+        if confirmar "Deseja substituir a instalação anterior?"; then
+            local services
+            services=$(cd /opt/pgbackweb && docker compose config --services) \
+                || erro "Não foi possível ler o Compose anterior. Instalação anterior preservada."
+            grep -qx pgbackweb <<<"$services" \
+                || erro "O Compose anterior não contém o serviço pgbackweb. Instalação anterior preservada."
+            PG_BACK_WEB_REPLACE_LEGACY=true
+        else
+            erro "Instalação anterior preservada. Nenhuma alteração foi feita no PG Back Web."
+        fi
     fi
 
     # Detecta também instalações anteriores cujo Compose não está mais no disco.
-    if [ ! -f "$PG_BACK_WEB_ENV_FILE" ] && command -v docker >/dev/null 2>&1 \
+    if [ "${PG_BACK_WEB_REPLACE_LEGACY:-false}" != true ] \
+        && [ ! -f "$PG_BACK_WEB_ENV_FILE" ] && command -v docker >/dev/null 2>&1 \
         && docker inspect "${APP_NAME}-postgres" >/dev/null 2>&1; then
         local previous_database
         previous_database=$(docker exec "${APP_NAME}-postgres" sh -c \
@@ -19,9 +37,55 @@ preflight_pgbackweb() {
     fi
 }
 
+replace_legacy_pgbackweb() {
+    [ "${PG_BACK_WEB_REPLACE_LEGACY:-false}" = true ] || return 0
+
+    # Confirma que será possível parar apenas o serviço antigo, sem parar
+    # o PostgreSQL compartilhado com o EscalasPro.
+    local archive metadata_exists
+
+    archive="/opt/pgbackweb-antes-integracao-$(date +%Y%m%d-%H%M%S)"
+    [ ! -e "$archive" ] || erro "Já existe o arquivo de preservação $archive."
+
+    metadata_exists=$(docker exec "$POSTGRES_CONTAINER_NAME" sh -c \
+        'psql -X -At -U "$POSTGRES_USER" -d postgres -c "SELECT count(*) FROM pg_database WHERE datname = '\''pgbackweb'\''"') \
+        || erro "Não foi possível verificar o banco anterior do PG Back Web."
+
+    if [ "$metadata_exists" = 1 ]; then
+        # Antes de parar o serviço, testa o dump e guarda-o junto aos arquivos
+        # antigos. O banco só será substituído após a cópia ser verificada.
+        docker exec "$POSTGRES_CONTAINER_NAME" sh -c \
+            'pg_dump -Fc -U "$POSTGRES_USER" -d pgbackweb' \
+            > /opt/pgbackweb/pgbackweb-antes-integracao.dump \
+            || erro "Falha ao preservar o banco pgbackweb. A instalação anterior foi mantida."
+        chmod 600 /opt/pgbackweb/pgbackweb-antes-integracao.dump
+        docker exec -i "$POSTGRES_CONTAINER_NAME" pg_restore -l \
+            < /opt/pgbackweb/pgbackweb-antes-integracao.dump >/dev/null \
+            || erro "O dump anterior não passou na verificação. A instalação anterior foi mantida."
+    fi
+
+    (cd /opt/pgbackweb && docker compose stop pgbackweb) \
+        || erro "Não foi possível parar o PG Back Web anterior. Dados anteriores preservados."
+    mv /opt/pgbackweb "$archive" \
+        || erro "Não foi possível arquivar a instalação anterior. Banco anterior preservado."
+    chmod 700 "$archive"
+    [ -f "$archive/.env" ] && chmod 600 "$archive/.env"
+
+    if [ "$metadata_exists" = 1 ]; then
+        docker exec "$POSTGRES_CONTAINER_NAME" sh -c \
+            'psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres -c "DROP DATABASE pgbackweb WITH (FORCE)"' >/dev/null \
+            || erro "Não foi possível substituir o banco pgbackweb. Restaure-o a partir de $archive."
+    fi
+
+    # Usuários SQL antigos serão reaproveitados com novas senhas, sem imprimir
+    # nenhuma delas. O diretório arquivado contém as credenciais anteriores.
+    log "Instalação anterior preservada em $archive."
+}
+
 prepare_pgbackweb() {
     step "Preparando banco e credenciais do PG Back Web"
 
+    replace_legacy_pgbackweb
     source "$APP_DIR/.env"
     install -d -m 700 "$PG_BACK_WEB_DIR"
     install -d -m 700 "$PG_BACK_WEB_DIR/backups"
@@ -34,10 +98,12 @@ prepare_pgbackweb() {
             "SELECT count(*) FROM pg_database WHERE datname = 'pgbackweb'" | tr -d '[:space:]')
         [ "$existing" = 0 ] || erro "O banco pgbackweb já existe, mas $PG_BACK_WEB_ENV_FILE não existe. Migre as credenciais antes de continuar."
 
-        existing=$(docker exec "$POSTGRES_CONTAINER_NAME" psql -X -At \
-            -U "$POSTGRES_USER" -d postgres -c \
-            "SELECT count(*) FROM pg_roles WHERE rolname IN ('pgbackweb', 'escalas_backup')" | tr -d '[:space:]')
-        [ "$existing" = 0 ] || erro "Há usuários de backup existentes sem o arquivo de credenciais. Migre-os antes de continuar."
+        if [ "${PG_BACK_WEB_REPLACE_LEGACY:-false}" != true ]; then
+            existing=$(docker exec "$POSTGRES_CONTAINER_NAME" psql -X -At \
+                -U "$POSTGRES_USER" -d postgres -c \
+                "SELECT count(*) FROM pg_roles WHERE rolname IN ('pgbackweb', 'escalas_backup')" | tr -d '[:space:]')
+            [ "$existing" = 0 ] || erro "Há usuários de backup existentes sem o arquivo de credenciais. Migre-os antes de continuar."
+        fi
 
         # A senha do administrador web também é gerada e guardada aqui.
         # Nunca imprima o conteúdo: init_logging grava toda a saída em arquivo.

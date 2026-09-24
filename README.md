@@ -171,9 +171,16 @@ banco `escalas` não incluem automaticamente o banco de configuração
 de recuperação do servidor.
 
 Se já existir um PG Back Web instalado separadamente em `/opt/pgbackweb`,
-é necessário migrar suas credenciais, banco de configuração e arquivos de
-backup antes de rodar esta versão do instalador. O instalador interrompe a
-execução ao detectar a instalação anterior para evitar substituí-la.
+o instalador perguntará se deseja substituí-lo (o padrão é cancelar).
+Ao confirmar, ele arquiva a instalação anterior em
+`/opt/pgbackweb-antes-integracao-<data>` e, quando encontra seu banco de
+configuração no PostgreSQL do EscalasPro, salva um dump antes de criar o
+novo banco. A conta e a tarefa antigas não são importadas: o instalador
+cria uma configuração nova e guarda as credenciais correspondentes em
+`/opt/escalas/pgbackweb/.env`. Os backups anteriores permanecem no arquivo
+preservado, mas não aparecerão automaticamente na nova interface. Se o
+banco de configuração anterior estiver em outro PostgreSQL, a migração
+desse banco deve ser tratada separadamente antes de confirmar a substituição.
 
 ------------------------------------------------------------------------
 
