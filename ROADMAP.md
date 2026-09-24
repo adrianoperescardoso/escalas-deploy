@@ -66,7 +66,7 @@ Agora que o MVP foi concluído, o foco passa a ser a melhoria da qualidade do pr
 ## Funcionalidades
 
 - [ ] Atualização automática da aplicação
-- [ ] Backup automático do PostgreSQL
+- [ ] Validar em VM o backup automático do PostgreSQL integrado ao instalador
 - [ ] Rollback automático
 - [ ] Configuração via arquivo `.env`
 - [ ] Health Check da aplicação
