@@ -120,6 +120,13 @@ cd escalas-deploy
 sudo ./install.sh
 ```
 
+Ao iniciar pela branch `main`, o instalador verifica o GitHub e executa
+`git pull --ff-only` antes de carregar as etapas. Se houver código novo,
+reinicia automaticamente com essa versão. O repositório precisa estar sem
+alterações locais; se a atualização falhar, a instalação não começa. Ao
+executar em outra branch, a atualização automática é ignorada para preservar
+o código escolhido para testes.
+
 ## Comportamento da restauração do banco
 
 -   Na primeira instalação, quando ainda não existem dados locais do

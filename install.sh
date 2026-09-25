@@ -21,6 +21,52 @@ set -Eeuo pipefail
 # Diretório raiz do projeto.
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Atualiza o próprio instalador antes de carregar qualquer etapa. Se o código
+# mudar, reexecuta o arquivo atualizado para não misturar versões na execução.
+update_installer_before_start() {
+    [ "${ESCALAS_INSTALL_REEXEC:-0}" = 1 ] && return 0
+    [ -e "$BASE_DIR/.git" ] || return 0
+
+    command -v git >/dev/null 2>&1 || {
+        echo "ERRO: Git não está disponível para atualizar o instalador." >&2
+        return 1
+    }
+
+    local owner branch previous_head current_head
+    local -a git_command=(git)
+    owner=$(stat -c %U "$BASE_DIR")
+    if [ "$EUID" -eq 0 ] && [ "$owner" != root ]; then
+        git_command=(sudo -H -u "$owner" git)
+    fi
+
+    branch=$("${git_command[@]}" -C "$BASE_DIR" branch --show-current)
+    if [ "$branch" != main ]; then
+        echo "Atualização automática ignorada na branch ${branch:-sem branch}."
+        return 0
+    fi
+
+    if [ -n "$("${git_command[@]}" -C "$BASE_DIR" status --porcelain)" ]; then
+        echo "ERRO: há alterações locais no escalas-deploy. Revise-as antes de instalar." >&2
+        return 1
+    fi
+
+    previous_head=$("${git_command[@]}" -C "$BASE_DIR" rev-parse HEAD)
+    echo "Verificando atualizações do instalador na branch main..."
+    "${git_command[@]}" -C "$BASE_DIR" pull --ff-only origin main || {
+        echo "ERRO: não foi possível atualizar o instalador. Nenhuma etapa de instalação foi iniciada." >&2
+        return 1
+    }
+    current_head=$("${git_command[@]}" -C "$BASE_DIR" rev-parse HEAD)
+
+    if [ "$previous_head" != "$current_head" ]; then
+        echo "Instalador atualizado; iniciando a versão nova..."
+        export ESCALAS_INSTALL_REEXEC=1
+        exec "$BASE_DIR/install.sh" "$@"
+    fi
+}
+
+update_installer_before_start "$@"
+
 # Carrega toda a infraestrutura necessária para execução do
 # instalador (configurações, funções utilitárias e etapas).
 source "$BASE_DIR/scripts/core/bootstrap.sh"
