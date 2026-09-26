@@ -115,7 +115,8 @@ prepare_server() {
         htop \
         jq \
         nano \
-        tar
+        tar \
+        openssh-server
 
     # --------------------------------------------------------
     # Configuração do repositório oficial do Docker
@@ -165,30 +166,40 @@ EOF
         docker-compose-plugin
 
     # --------------------------------------------------------
-    # Inicialização do Docker
+    # Inicialização automática dos serviços essenciais
     # --------------------------------------------------------
 
-    step "Habilitando e iniciando Docker"
+    step "Habilitando serviços para inicialização automática"
 
-    # Configura o Docker para iniciar automaticamente com
-    # o sistema operacional.
-    systemctl enable docker
-
-    # Inicia o serviço imediatamente.
-    systemctl start docker
+    # Docker e SSH devem estar disponíveis automaticamente após
+    # qualquer reinicialização da VM.
+    systemctl enable --now docker
+    systemctl enable --now ssh
 
     # --------------------------------------------------------
     # Validação da instalação
     # --------------------------------------------------------
 
-    step "Validando instalação do Docker"
+    step "Validando Docker e SSH"
 
     docker --version || erro "Docker não foi instalado corretamente."
 
     docker compose version || erro "Docker Compose não foi instalado corretamente."
 
+    if ! systemctl is-enabled --quiet docker; then
+        erro "O Docker não está habilitado para iniciar automaticamente."
+    fi
+
     if ! systemctl is-active --quiet docker; then
         erro "O serviço Docker não está ativo."
+    fi
+
+    if ! systemctl is-enabled --quiet ssh; then
+        erro "O SSH não está habilitado para iniciar automaticamente."
+    fi
+
+    if ! systemctl is-active --quiet ssh; then
+        erro "O serviço SSH não está ativo."
     fi
 
     sucesso "Preparação do servidor concluída com sucesso."
