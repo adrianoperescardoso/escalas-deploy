@@ -150,9 +150,14 @@ define_database_restore_mode() {
     echo "Foi encontrado um banco de dados existente."
     echo
 
-    if confirmar "Deseja restaurar o banco utilizando o backup da release? ATENÇÃO: os dados atuais serão substituídos."; then
+    echo "ATENÇÃO: esta opção realizará uma NOVA INSTALAÇÃO do banco de dados."
+    echo "O banco atual será APAGADO e substituído pelo backup da release."
+    echo "TODOS OS DADOS existentes no banco atual serão PERDIDOS."
+    echo
+
+    if confirmar "Deseja continuar com a nova instalação do banco?"; then
         RESTORE_DATABASE=true
-        log "O banco existente será restaurado com o backup da release."
+        log "Nova instalação do banco confirmada. O banco atual será substituído pelo backup da release."
     else
         RESTORE_DATABASE=false
         TOTAL_STEPS=$((TOTAL_STEPS - 1))
