@@ -161,6 +161,28 @@ define_database_restore_mode() {
 }
 
 # ------------------------------------------------------------
+# Define se um backup local existente deve ser substituído pelo
+# backup publicado na release.
+# ------------------------------------------------------------
+define_database_backup_download_mode() {
+
+    DOWNLOAD_DATABASE_BACKUP=true
+
+    if [ "$RESTORE_DATABASE" != true ] || [ ! -s "$BACKUP_LOCAL_FILE" ]; then
+        return
+    fi
+
+    echo
+    echo "Foi encontrado um backup local: $BACKUP_LOCAL_FILE"
+
+    if confirmar "Deseja baixar o backup da release ${RELEASE_VERSION} e substituir o arquivo atual?"; then
+        DOWNLOAD_DATABASE_BACKUP=true
+    else
+        DOWNLOAD_DATABASE_BACKUP=false
+    fi
+}
+
+# ------------------------------------------------------------
 # Define se a porta do PostgreSQL será publicada no servidor.
 #
 # A resposta padrão é negativa para manter o banco acessível
@@ -201,9 +223,11 @@ collect_installation_options() {
     # antes de qualquer alteração no ambiente.
     preflight_pgbackweb
     define_database_restore_mode
+    define_database_backup_download_mode
     define_postgres_exposure_mode
 
     local DATABASE_MODE
+    local BACKUP_MODE
     local POSTGRES_ACCESS
     local PGBACKWEB_MODE
 
@@ -211,6 +235,14 @@ collect_installation_options() {
         DATABASE_MODE="Nova instalação usando o backup da release"
     else
         DATABASE_MODE="Preservar banco atual"
+    fi
+
+    if [ "$RESTORE_DATABASE" != true ]; then
+        BACKUP_MODE="Não será utilizado"
+    elif [ -s "$BACKUP_LOCAL_FILE" ] && [ "${DOWNLOAD_DATABASE_BACKUP:-true}" != true ]; then
+        BACKUP_MODE="Manter arquivo local"
+    else
+        BACKUP_MODE="Baixar da release ${RELEASE_VERSION}"
     fi
 
     if [ "$EXPOSE_POSTGRES" = true ]; then
@@ -233,6 +265,7 @@ collect_installation_options() {
     echo " Resumo das opções"
     echo "========================================"
     printf "%-24s %s\n" "Banco de dados:" "$DATABASE_MODE"
+    printf "%-24s %s\n" "Backup do banco:" "$BACKUP_MODE"
     printf "%-24s %s\n" "PostgreSQL:" "$POSTGRES_ACCESS"
     printf "%-24s %s\n" "PG Back Web:" "$PGBACKWEB_MODE"
     printf "%-24s %s\n" "Release:" "$RELEASE_VERSION"

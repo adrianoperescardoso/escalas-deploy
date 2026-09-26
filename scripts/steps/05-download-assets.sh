@@ -59,17 +59,9 @@ download_database_backup() {
     echo "Origem : $BACKUP_DOWNLOAD_URL"
     echo "Destino: $BACKUP_LOCAL_FILE"
 
-    if [ -s "$BACKUP_LOCAL_FILE" ]; then
-
-        echo
-        echo "Foi encontrado um backup local:"
-        echo "$BACKUP_LOCAL_FILE"
-        echo
-
-        if ! confirmar "Deseja baixar o backup da release ${RELEASE_VERSION} e substituir o arquivo atual?"; then
-            log "O backup local será mantido. Download ignorado."
-            return
-        fi
+    if [ -s "$BACKUP_LOCAL_FILE" ] && [ "${DOWNLOAD_DATABASE_BACKUP:-true}" != true ]; then
+        log "O backup local será mantido conforme configuração inicial. Download ignorado."
+        return
     fi
 
     log "Baixando backup do banco de dados..."
