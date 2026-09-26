@@ -120,16 +120,6 @@ prepare_pgbackweb() {
     install -d -m 700 "$PG_BACK_WEB_DIR"
     install -d -m 700 "$PG_BACK_WEB_DIR/backups"
 
-    # Durante a criação do novo administrador, exponha a interface só na VM.
-    # O IP anterior é restaurado após o provisionamento, inclusive numa retomada.
-    local bind_marker="${PG_BACK_WEB_DIR}/BIND_IP_PENDENTE"
-    if [ "${PG_BACK_WEB_REPLACE_CURRENT:-false}" = true ] \
-        && grep -q '^PBW_BIND_IP=' "$APP_DIR/.env"; then
-        printf '%s\n' "$PBW_BIND_IP" > "$bind_marker"
-        chmod 600 "$bind_marker"
-        update_env_variable PBW_BIND_IP 127.0.0.1
-    fi
-
     if [ -n "${PBW_LEGACY_ARCHIVE:-}" ]; then
         local reference_file="${PG_BACK_WEB_DIR}/INSTALACAO_ANTERIOR.txt"
         {
@@ -246,7 +236,8 @@ configure_pgbackweb() {
     step "Configurando usuário e backup no PG Back Web"
 
     source "$APP_DIR/.env"
-    local local_url="http://${PBW_BIND_IP:-127.0.0.1}:8085"
+    # O provisionamento é local e não deve depender do endereço DHCP da VM.
+    local local_url="http://127.0.0.1:8085"
     local attempt
     for attempt in $(seq 1 30); do
         if curl -fsS --max-time 3 "$local_url/api/v1/health" >/dev/null 2>&1; then
@@ -260,23 +251,6 @@ configure_pgbackweb() {
     python3 "$BASE_DIR/scripts/steps/pgbackweb-provision.py" \
         "$PG_BACK_WEB_ENV_FILE" "$POSTGRES_CONTAINER_NAME" "$POSTGRES_USER" "$local_url" \
         || erro "Não foi possível configurar o PG Back Web. Credenciais preservadas em $PG_BACK_WEB_ENV_FILE."
-
-    # Publica a interface na rede da VM somente após a criação do usuário.
-    if [ -f "$PG_BACK_WEB_DIR/BIND_IP_PENDENTE" ]; then
-        local previous_bind_ip
-        previous_bind_ip=$(cat "$PG_BACK_WEB_DIR/BIND_IP_PENDENTE")
-        update_env_variable PBW_BIND_IP "$previous_bind_ip"
-        cd "$APP_DIR"
-        docker compose -p "$PROJECT_NAME" up -d --no-deps pgbackweb
-        rm "$PG_BACK_WEB_DIR/BIND_IP_PENDENTE"
-    elif ! grep -q '^PBW_BIND_IP=' "$APP_DIR/.env"; then
-        local host_ip
-        host_ip=$(get_host_ip)
-        [ -n "$host_ip" ] || erro "Não foi possível identificar o IP da VM para publicar o PG Back Web."
-        update_env_variable PBW_BIND_IP "$host_ip"
-        cd "$APP_DIR"
-        docker compose -p "$PROJECT_NAME" up -d --no-deps pgbackweb
-    fi
 
     sucesso "PG Back Web configurado. Credenciais em $PG_BACK_WEB_ENV_FILE."
 }
