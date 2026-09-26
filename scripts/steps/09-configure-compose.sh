@@ -104,7 +104,7 @@ EOF
       - ./pgbackweb/.env
 
     ports:
-      - "\${PBW_BIND_IP:-127.0.0.1}:8085:8085"
+      - "8085:8085"
 
     volumes:
       - ./pgbackweb/backups:/backups
