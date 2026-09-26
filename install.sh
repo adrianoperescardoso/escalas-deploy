@@ -77,16 +77,9 @@ main() {
     init_logging
     print_header
 
-    # Uma instalação manual antiga exige migração antes de parar a aplicação.
-    preflight_pgbackweb
-
-    # Define se o banco será restaurado antes de qualquer limpeza.
-    # Em instalações existentes, o padrão é preservar os dados.
-    define_database_restore_mode
-
-    # Define se o PostgreSQL poderá ser acessado externamente.
-    # A opção padrão é manter o banco somente na rede Docker.
-    define_postgres_exposure_mode
+    # Coleta todas as decisões do usuário antes de iniciar qualquer
+    # alteração no ambiente e apresenta um resumo para confirmação.
+    collect_installation_options
 
     # Remove instalações anteriores que possam interferir
     # na nova execução.

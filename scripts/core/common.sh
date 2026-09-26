@@ -184,6 +184,94 @@ define_postgres_exposure_mode() {
 }
 
 # ------------------------------------------------------------
+# Coleta as opções da instalação antes de iniciar a execução.
+#
+# Todas as perguntas são apresentadas em sequência e, ao final,
+# o usuário confirma o plano completo antes de qualquer alteração.
+# ------------------------------------------------------------
+collect_installation_options() {
+
+    echo
+    echo "========================================"
+    echo " Configuração da instalação"
+    echo "========================================"
+    echo
+
+    # As decisões específicas do PG Back Web também são coletadas aqui,
+    # antes de qualquer alteração no ambiente.
+    preflight_pgbackweb
+    define_database_restore_mode
+    define_postgres_exposure_mode
+
+    local DATABASE_MODE
+    local POSTGRES_ACCESS
+    local PGBACKWEB_MODE
+
+    if [ "$RESTORE_DATABASE" = true ]; then
+        DATABASE_MODE="Nova instalação usando o backup da release"
+    else
+        DATABASE_MODE="Preservar banco atual"
+    fi
+
+    if [ "$EXPOSE_POSTGRES" = true ]; then
+        POSTGRES_ACCESS="Externo"
+    else
+        POSTGRES_ACCESS="Somente rede Docker"
+    fi
+
+    if [ "${PG_BACK_WEB_REPLACE_LEGACY:-false}" = true ] || \
+       [ "${PG_BACK_WEB_REPLACE_CURRENT:-false}" = true ]; then
+        PGBACKWEB_MODE="Nova instalação"
+    elif [ -f "$PG_BACK_WEB_ENV_FILE" ]; then
+        PGBACKWEB_MODE="Preservar instalação atual"
+    else
+        PGBACKWEB_MODE="Instalar"
+    fi
+
+    echo
+    echo "========================================"
+    echo " Resumo das opções"
+    echo "========================================"
+    printf "%-24s %s\n" "Banco de dados:" "$DATABASE_MODE"
+    printf "%-24s %s\n" "PostgreSQL:" "$POSTGRES_ACCESS"
+    printf "%-24s %s\n" "PG Back Web:" "$PGBACKWEB_MODE"
+    printf "%-24s %s\n" "Release:" "$RELEASE_VERSION"
+    echo "========================================"
+    echo
+
+    if ! confirmar_inicio_instalacao; then
+        echo
+        echo "Instalação cancelada pelo usuário. Nenhuma alteração foi realizada."
+        echo
+        exit 0
+    fi
+
+    log "Configuração confirmada. Iniciando instalação."
+}
+
+# ------------------------------------------------------------
+# Confirma o início da instalação.
+#
+# Nesta confirmação final, a resposta padrão é positiva, pois as
+# opções individuais já foram apresentadas e revisadas no resumo.
+# ------------------------------------------------------------
+confirmar_inicio_instalacao() {
+
+    local resposta
+
+    read -r -p "Iniciar instalação com essas configurações? [S/n]: " resposta
+
+    case "$resposta" in
+        ""|s|S|sim|SIM|Sim)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# ------------------------------------------------------------
 # Adiciona a publicação da porta do PostgreSQL ao Compose somente
 # quando o usuário autorizar o acesso externo.
 # ------------------------------------------------------------
