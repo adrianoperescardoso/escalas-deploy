@@ -43,7 +43,8 @@ PG_BACK_WEB_IMAGE="eduardolat/pgbackweb:0.5.2"
 
 GITHUB_OWNER="adrianoperescardoso"
 GITHUB_REPOSITORY="escalas-deploy"
-RELEASE_VERSION="V1.0.3"
+RELEASE_VERSION="V1.0.4"
+BACKUP_RELEASE_VERSION="V1.0.3"
 
 # ============================================================
 # Backup do PostgreSQL
@@ -51,7 +52,7 @@ RELEASE_VERSION="V1.0.3"
 
 BACKUP_FILE_NAME="Escalas.backup"
 
-BACKUP_DOWNLOAD_URL="https://github.com/${GITHUB_OWNER}/${GITHUB_REPOSITORY}/releases/download/${RELEASE_VERSION}/${BACKUP_FILE_NAME}"
+BACKUP_DOWNLOAD_URL="https://github.com/${GITHUB_OWNER}/${GITHUB_REPOSITORY}/releases/download/${BACKUP_RELEASE_VERSION}/${BACKUP_FILE_NAME}"
 
 BACKUP_LOCAL_DIR="${APP_DIR}/assets/backup"
 BACKUP_LOCAL_FILE="${BACKUP_LOCAL_DIR}/${BACKUP_FILE_NAME}"
@@ -60,7 +61,7 @@ BACKUP_LOCAL_FILE="${BACKUP_LOCAL_DIR}/${BACKUP_FILE_NAME}"
 # Artefatos da aplicação
 # ============================================================
 
-APPLICATION_PACKAGE_NAME="DeploymentUnit1_20260926110326.zip"
+APPLICATION_PACKAGE_NAME="DeploymentUnit1_20260926130753.zip"
 
 APPLICATION_DOWNLOAD_URL="https://github.com/${GITHUB_OWNER}/${GITHUB_REPOSITORY}/releases/download/${RELEASE_VERSION}/${APPLICATION_PACKAGE_NAME}"
 
