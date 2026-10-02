@@ -127,6 +127,26 @@ alterações locais; se a atualização falhar, a instalação não começa. Ao
 executar em outra branch, a atualização automática é ignorada para preservar
 o código escolhido para testes.
 
+## Atualização da versão da aplicação
+
+As referências aos artefatos ficam em `scripts/core/config.sh`. Ao publicar
+uma nova release, atualize os dois valores juntos:
+
+-   `RELEASE_VERSION`: tag exata da release no GitHub (atualmente `V1.0.5`).
+-   `APPLICATION_PACKAGE_NAME`: nome exato do ZIP anexado à release
+    (atualmente `DeploymentUnit1_20261002085456.zip`).
+
+O nome do ZIP também define o arquivo local usado pelo instalador. Use o
+nome do novo pacote para que o ZIP anterior não seja reaproveitado.
+
+`BACKUP_RELEASE_VERSION` define separadamente a origem do backup inicial
+do PostgreSQL. Altere essa referência somente quando também quiser atualizar
+o backup usado nas restaurações.
+
+Depois de integrar a alteração na `main`, execute `sudo ./install.sh` no
+servidor. Para atualizar a aplicação mantendo os dados existentes, responda
+`N` à pergunta sobre restauração do banco.
+
 ## Comportamento da restauração do banco
 
 -   Na primeira instalação, quando ainda não existem dados locais do
