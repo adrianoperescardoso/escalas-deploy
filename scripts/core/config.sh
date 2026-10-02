@@ -44,7 +44,7 @@ PG_BACK_WEB_IMAGE="eduardolat/pgbackweb:0.5.2"
 GITHUB_OWNER="adrianoperescardoso"
 GITHUB_REPOSITORY="escalas-deploy"
 RELEASE_VERSION="V1.0.5"
-BACKUP_RELEASE_VERSION="V1.0.3"
+BACKUP_RELEASE_VERSION="V1.0.5"
 
 # ============================================================
 # Backup do PostgreSQL
