@@ -175,7 +175,7 @@ define_database_backup_download_mode() {
     echo
     echo "Foi encontrado um backup local: $BACKUP_LOCAL_FILE"
 
-    if confirmar "Deseja baixar o backup da release ${RELEASE_VERSION} e substituir o arquivo atual?"; then
+    if confirmar "Deseja baixar o backup da release ${BACKUP_RELEASE_VERSION} e substituir o arquivo atual?"; then
         DOWNLOAD_DATABASE_BACKUP=true
     else
         DOWNLOAD_DATABASE_BACKUP=false
@@ -242,7 +242,7 @@ collect_installation_options() {
     elif [ -s "$BACKUP_LOCAL_FILE" ] && [ "${DOWNLOAD_DATABASE_BACKUP:-true}" != true ]; then
         BACKUP_MODE="Manter arquivo local"
     else
-        BACKUP_MODE="Baixar da release ${RELEASE_VERSION}"
+        BACKUP_MODE="Baixar da release ${BACKUP_RELEASE_VERSION}"
     fi
 
     if [ "$EXPOSE_POSTGRES" = true ]; then
