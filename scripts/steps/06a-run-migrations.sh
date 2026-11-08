@@ -65,13 +65,16 @@ run_database_migrations() {
 
         log "Aplicando migration: $migration_name"
 
-        # -1: transacao unica; ON_ERROR_STOP: falha interrompe psql.
+        # BEGIN/COMMIT explicitos tambem funcionam com SQL via stdin.
+        # ON_ERROR_STOP interrompe psql; conexao encerrada reverte a transacao.
         # Migration e registro no historico sao confirmados juntos.
         if ! {
+            printf 'BEGIN;\\n'
             cat "$migration_file"
             printf '\nINSERT INTO public.escalas_schema_migrations (version, checksum) VALUES (\047%s\047, \047%s\047);\n' "$migration_name" "$checksum"
+            printf 'COMMIT;\\n'
         } | docker exec -i "$POSTGRES_CONTAINER_NAME" psql \
-            -X -v ON_ERROR_STOP=1 -1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"; then
+            -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"; then
             erro "Falha na migration $migration_name. Transacao revertida; instalacao interrompida."
         fi
 
