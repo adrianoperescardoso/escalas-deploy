@@ -1,65 +1,31 @@
 #!/bin/bash
-# Validacao da estrutura e aplicacao da migration conhecida.
-# Nenhum ALTER e executado sem a autorizacao no preflight.
+# Aplica plano gerado contra o backup real da release, nunca SQL fixo.
 run_database_migrations() {
-    step "Validando compatibilidade do banco de dados"
+    step "Aplicando migrations de schema"
+    if [ "$RESTORE_DATABASE" = true ]; then
+        log "Banco restaurado do backup de referencia. Nenhuma migration adicional."
+        return
+    fi
+    if [ "$SCHEMA_HAS_DIFFERENCES" != true ]; then
+        log "Schema ja compativel."
+        return
+    fi
+    [ "$SCHEMA_MIGRATION_APPROVED" = true ] || erro "Migracao nao autorizada."
+    [ -s "$SCHEMA_TEMP_DIR/migration.sql" ] || erro "Plano SQL vazio."
 
-    local actual migration_name="0001_ampliar_sigla_turnos.sql"
-    local sql="$BASE_DIR/migrations/$migration_name"
-    local checksum old_checksum
     source "$APP_DIR/.env"
-
-    [ -f "$sql" ] || erro "Migration nao encontrada: $sql"
-    actual=$(get_turnos_sigla_type)
-
-    case "$actual" in
-        "character varying:4")
-            log "Estrutura compativel: public.turnos.turnossigla varchar(4)."
-            return
-            ;;
-        "character varying:2")
-            if [ "${SCHEMA_MIGRATION_APPROVED:-false}" != true ]; then
-                erro "Correcao necessaria mas nao autorizada. Atualizacao interrompida."
-            fi
-            ;;
-        *)
-            erro "Estrutura inesperada: '${actual:-coluna inexistente}'. Nao e seguro prosseguir."
-            ;;
-    esac
-
-    # A tabela de historico e criada apenas apos a aprovacao.
-    if ! docker exec "$POSTGRES_CONTAINER_NAME" psql -X -v ON_ERROR_STOP=1 \
-        -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
-        'CREATE TABLE IF NOT EXISTS public.escalas_schema_migrations (
-             version varchar(255) PRIMARY KEY,
-             checksum char(64) NOT NULL,
-             applied_at timestamptz NOT NULL DEFAULT now()
-         );' >/dev/null; then
-        erro "Falha ao preparar historico de migrations."
+    log "Executando plano aprovado em transacao unica..."
+    if ! docker exec -i "$POSTGRES_CONTAINER_NAME" psql -X -v ON_ERROR_STOP=1 \
+        -1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+        < "$SCHEMA_TEMP_DIR/migration.sql"; then
+        erro "Falha ao aplicar plano. Transacao revertida. Atualizacao interrompida."
     fi
-
-    checksum=$(sha256sum "$sql" | awk '{print $1}')
-    if ! old_checksum=$(docker exec "$POSTGRES_CONTAINER_NAME" \
-        psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-        -Atqc "SELECT checksum FROM public.escalas_schema_migrations WHERE version='$migration_name'"); then
-        erro "Falha ao consultar historico de migrations."
+    # Regera a comparacao apos a aplicacao para encontrar diffs remanescentes.
+    schema_diff_plan
+    if [ -s "$SCHEMA_TEMP_DIR/schema.diff" ]; then
+        echo "Ainda ha diferencas estruturais:"
+        cat "$SCHEMA_TEMP_DIR/schema.diff"
+        erro "A estrutura nao ficou identica a referencia. Instalacao interrompida."
     fi
-    if [ -n "$old_checksum" ]; then
-        erro "Migration consta como aplicada mas a coluna ainda e varchar(2); verificacao manual necessaria."
-    fi
-
-    log "Aplicando alteracao autorizada: public.turnos.turnossigla varchar(2) -> varchar(4)"
-    if ! {
-        printf 'BEGIN;\n'
-        cat "$sql"
-        printf "\nINSERT INTO public.escalas_schema_migrations (version, checksum) VALUES ('%s', '%s');\n" "$migration_name" "$checksum"
-        printf 'COMMIT;\n'
-    } | docker exec -i "$POSTGRES_CONTAINER_NAME" psql -X -v ON_ERROR_STOP=1 \
-        -U "$POSTGRES_USER" -d "$POSTGRES_DB"; then
-        erro "Migration falhou. Transacao revertida. Atualizacao interrompida."
-    fi
-
-    actual=$(get_turnos_sigla_type)
-    [ "$actual" = "character varying:4" ] || erro "Validacao pos-migration falhou: $actual"
-    sucesso "Estrutura atualizada para varchar(4) e validada."
+    sucesso "Banco validado contra o schema integral da release."
 }
