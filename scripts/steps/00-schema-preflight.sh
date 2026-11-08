@@ -154,6 +154,8 @@ preflight_schema_changes() {
 
     if [ ! -s "$SCHEMA_TEMP_DIR/schema.diff" ]; then
         echo "Nenhuma diferenca de schema detectada."
+        docker rm -f "$SCHEMA_TEMP_CONTAINER" >/dev/null 2>&1 || true
+        SCHEMA_TEMP_CONTAINER=""
         return
     fi
 
@@ -180,6 +182,10 @@ preflight_schema_changes() {
 
     if confirmar "Deseja aplicar todas as correcoes estruturais exibidas?"; then
         SCHEMA_MIGRATION_APPROVED=true
+        # O instalador recria o container PostgreSQL em seguida. O sandbox
+        # deve ser removido antes disso; preservamos dumps/plano em disco.
+        docker rm -f "$SCHEMA_TEMP_CONTAINER" >/dev/null 2>&1 || schema_fail "Falha ao encerrar banco temporario."
+        SCHEMA_TEMP_CONTAINER=""
     else
         schema_fail "Atualizacao cancelada: o novo release exige as alteracoes exibidas. O banco existente nao foi alterado."
     fi
