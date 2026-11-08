@@ -288,3 +288,23 @@ Em atualizações de produção, preserve o banco existente ao responder **N**
 à pergunta sobre nova instalação do banco. Faça um backup verificado antes
 de aplicar migrações. Arquivos SQL já publicados nunca devem ser editados:
 crie uma nova migration para alterações subsequentes.
+
+## Comparacao estrutural antes da atualizacao
+
+Em atualizacoes que preservam dados, o instalador consulta **antes da limpeza**
+a estrutura do PostgreSQL existente e compara com a regra de schema versionada.
+Nesta fase a comparacao automatica cobre **somente**
+`public.turnos.turnossigla`, cujo tipo exigido e `varchar(4)`.
+Nao se trata de comparacao integral de todos os objetos do banco.
+
+- Se o campo ja for `varchar(4)`, segue sem alterar o banco.
+- Se for `varchar(2)`, mostra a diferenca e solicita aprovacao explicita.
+- Se o usuario recusar, interrompe antes de alterar containers ou aplicar SQL.
+- Se encontrar tipo inesperado ou coluna ausente, interrompe sem tentar corrigir.
+- Se autorizado, executa a migration em transacao, registra historico
+  e verifica novamente o tipo antes de continuar o build.
+- Se o usuario escolher restaurar o banco, valida o schema apos o restore;
+  o backup fornecido deve conter a estrutura compativel.
+
+**Seguranca:** realize backup recuperavel antes de autorizar. A verificacao
+nao cobre outras mudancas de schema; elas exigem regras e scripts revisados.
