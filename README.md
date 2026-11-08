@@ -43,6 +43,7 @@ install.sh
    ├── PostgreSQL
    ├── Download dos artefatos
    ├── Decisão e restauração opcional do banco
+   ├── Migrations SQL versionadas
    ├── Preparação da aplicação
    ├── Build da imagem Docker
    ├── Docker Compose
@@ -63,7 +64,8 @@ install.sh
        05 Teste de conexão com o banco
        06 Download dos artefatos
        07 Restauração opcional do banco de dados
-       08 Preparação da aplicação
+       08 Execução de migrations SQL
+       09 Preparação da aplicação
        09 Build da imagem Docker
        10 Configuração do Docker Compose
        11 Inicialização da aplicação
@@ -132,9 +134,9 @@ o código escolhido para testes.
 As referências aos artefatos ficam em `scripts/core/config.sh`. Ao publicar
 uma nova release, atualize os dois valores juntos:
 
--   `RELEASE_VERSION`: tag exata da release no GitHub (atualmente `V1.0.5`).
+-   `RELEASE_VERSION`: tag exata da release no GitHub (atualmente `V1.0.6`).
 -   `APPLICATION_PACKAGE_NAME`: nome exato do ZIP anexado à release
-    (atualmente `DeploymentUnit1_20261002085456.zip`).
+    (atualmente `DeploymentUnit1_20261009143015.zip`).
 
 O nome do ZIP também define o arquivo local usado pelo instalador. Use o
 nome do novo pacote para que o ZIP anterior não seja reaproveitado.
@@ -267,3 +269,48 @@ Ao término da instalação o ambiente estará preparado com:
 -   [ ] Rollback
 -   [ ] Health Check
 -   [ ] HTTPS
+
+
+## Comparação integral do schema e migração assistida
+
+Na atualização com preservação de dados, o instalador executa a análise antes
+da limpeza de contêineres e antes do build da aplicação:
+
+1. Obtém o backup `Escalas.backup` configurado para a release.
+2. Restaura apenas seu schema em PostgreSQL 17 temporário, isolado em dados.
+3. Exporta os schemas completos do banco atual e do banco de referência.
+4. Normaliza exclusivamente cabeçalhos variáveis dos dumps e nomes explícitos
+   de constraints `NOT NULL` **quando a obrigatoriedade é a mesma**.
+5. Compara os dumps normalizados, incluindo tabelas, colunas, chaves,
+   índices, views, funções, triggers e demais DDL exportados.
+6. Replica no PostgreSQL temporário as roles auxiliares (sem login) e as ACLs
+   reais extraídas do banco atual, sem modificar permissões no banco existente.
+7. Gera plano SQL usando `pg-schema-diff` v1.0.9, sem operações concorrentes
+   de índice, bloqueando qualquer `GRANT`, `REVOKE` ou alteração de ACL.
+8. Valida o plano em um banco temporário, exigindo que a estrutura resultante
+   seja equivalente à referência após normalização.
+9. Exibe as diferenças e o plano gerado e solicita autorização explícita.
+10. Se autorizado, arquiva o plano em `/opt/escalas/logs/migrations/`,
+   aplica a migração em transação e confere novamente o schema final.
+11. Se recusado ou se não conseguir gerar/validar o plano, bloqueia o deploy.
+
+A normalização **não ignora** mudanças de obrigatoriedade: somente remove
+o nome opcional de `CONSTRAINT ... NOT NULL` nos dumps para comparação.
+Os dumps brutos permanecem intactos para testes e restauração temporária.
+
+**Limitação:** o motor SQL não suporta todas as alterações possíveis do
+PostgreSQL. Nessas situações o deploy deverá falhar, sem considerar schemas
+diferentes como equivalentes. O sistema foi preparado para PostgreSQL 17;
+o backup V1.0.7 foi gerado pelo PostgreSQL 18.4, portanto requer validação
+em homologação antes de qualquer uso em produção.
+
+**Segurança:** fazer backup recuperável antes de autorizar mudanças. A
+validação em schema vazio não reproduz os riscos dos dados existentes.
+A ferramenta e o fluxo completo ainda exigem testes reais no servidor.
+
+**Homologação ACL (V1.0.6 → V1.0.7):** comparação inicial gerava `REVOKE SELECT`
+para o usuário `escalas_backup`, pois o backup de referência foi restaurado
+sem ACLs. Após reproduzir no PostgreSQL temporário a role e os `GRANT SELECT`
+existentes, o plano passou a propor somente o `ALTER TABLE turnos.turnossigla`
+(e o `ANALYZE` subsequente). A cópia automatizada dessas ACLs ainda deve ser
+testada ponta a ponta antes de autorizar instalação.
