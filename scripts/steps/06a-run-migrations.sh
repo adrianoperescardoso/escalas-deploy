@@ -31,7 +31,8 @@ run_database_migrations() {
     fi
     # Compara novamente todo o schema, sem depender do sandbox removido.
     schema_dump "$POSTGRES_CONTAINER_NAME" "$POSTGRES_DB" "$SCHEMA_TEMP_DIR/current-after.sql"
-    diff -u "$SCHEMA_TEMP_DIR/current-after.sql" "$SCHEMA_TEMP_DIR/reference.sql" > "$SCHEMA_TEMP_DIR/schema.diff" || true
+    schema_normalize "$SCHEMA_TEMP_DIR/current-after.sql" "$SCHEMA_TEMP_DIR/current-after.normalized.sql"
+    diff -u "$SCHEMA_TEMP_DIR/current-after.normalized.sql" "$SCHEMA_TEMP_DIR/reference.normalized.sql" > "$SCHEMA_TEMP_DIR/schema.diff" || true
     if [ -s "$SCHEMA_TEMP_DIR/schema.diff" ]; then
         echo "Ainda ha diferencas estruturais:"
         cat "$SCHEMA_TEMP_DIR/schema.diff"
