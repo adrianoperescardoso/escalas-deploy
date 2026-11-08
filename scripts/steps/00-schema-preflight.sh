@@ -27,7 +27,7 @@ schema_dump() {
         -h 127.0.0.1 -p "$( [ "$container" = "$SCHEMA_TEMP_CONTAINER" ] && echo "$SCHEMA_PORT" || echo 5432 )" -d "$database" \
         > "$output" || schema_fail "Falha ao extrair o schema de $database."
     # Cabecalhos e versoes da ferramenta nao fazem parte da estrutura.
-    sed -i '/^-- Dumped from database version /d; /^-- Dumped by pg_dump version /d; /^-- PostgreSQL database dump/d; /^-- PostgreSQL database dump complete/d; /^--$/d' "$output"
+    sed -i '/^-- Dumped from database version /d; /^-- Dumped by pg_dump version /d; /^-- PostgreSQL database dump/d; /^-- PostgreSQL database dump complete/d; /^--$/d; /^\\\\restrict /d; /^\\\\unrestrict /d' "$output"
 }
 
 schema_reference_prepare() {
@@ -96,6 +96,33 @@ schema_diff_plan() {
         > "$SCHEMA_TEMP_DIR/schema.diff" || true
 }
 
+
+schema_validate_plan_in_sandbox() {
+    # Verifica o plano em um clone APENAS estrutural do banco atual,
+    # no mesmo PostgreSQL descartavel que contem o schema de referencia.
+    # A validacao nao garante compatibilidade com dados reais.
+    local scratch_db="escalas_schema_plan_test"
+    docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$SCHEMA_TEMP_CONTAINER" \
+        createdb -h 127.0.0.1 -p "$SCHEMA_PORT" -U postgres "$scratch_db" \
+        || schema_fail "Falha ao criar banco de validacao temporario."
+    docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" "$SCHEMA_TEMP_CONTAINER" \
+        psql -X -v ON_ERROR_STOP=1 -1 -h 127.0.0.1 -p "$SCHEMA_PORT" \
+        -U postgres -d "$scratch_db" < "$SCHEMA_TEMP_DIR/current.sql" \
+        >/dev/null || schema_fail "Nao foi possivel reconstruir o schema atual no sandbox."
+
+    docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" "$SCHEMA_TEMP_CONTAINER" \
+        psql -X -v ON_ERROR_STOP=1 -1 -h 127.0.0.1 -p "$SCHEMA_PORT" \
+        -U postgres -d "$scratch_db" < "$SCHEMA_TEMP_DIR/migration.sql" \
+        >/dev/null || schema_fail "Plano SQL nao executou no sandbox. Revisao tecnica obrigatoria."
+
+    schema_dump "$SCHEMA_TEMP_CONTAINER" "$scratch_db" "$SCHEMA_TEMP_DIR/validated.sql"
+    if ! diff -q "$SCHEMA_TEMP_DIR/validated.sql" "$SCHEMA_TEMP_DIR/reference.sql" >/dev/null; then
+        diff -u "$SCHEMA_TEMP_DIR/validated.sql" "$SCHEMA_TEMP_DIR/reference.sql" || true
+        schema_fail "Plano nao reproduz o schema integral da release no sandbox. Atualizacao bloqueada."
+    fi
+    log "Plano validado no sandbox: schemas equivalentes apos aplicacao."
+}
+
 preflight_schema_changes() {
     SCHEMA_MIGRATION_APPROVED=false
     SCHEMA_HAS_DIFFERENCES=false
@@ -148,6 +175,8 @@ preflight_schema_changes() {
     if grep -Eiq '(^|[[:space:]])(DROP[[:space:]]+(TABLE|COLUMN|SCHEMA|TYPE)|TRUNCATE|CREATE[[:space:]]+INDEX[[:space:]]+CONCURRENTLY|DROP[[:space:]]+INDEX[[:space:]]+CONCURRENTLY|ALTER[[:space:]]+TYPE[[:space:]].*ADD[[:space:]]+VALUE)' "$SCHEMA_TEMP_DIR/migration.sql"; then
         schema_fail "Plano contem operacoes destrutivas ou nao transacionais. Revisao tecnica obrigatoria."
     fi
+
+    schema_validate_plan_in_sandbox
 
     if confirmar "Deseja aplicar todas as correcoes estruturais exibidas?"; then
         SCHEMA_MIGRATION_APPROVED=true
