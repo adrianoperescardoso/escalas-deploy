@@ -20,7 +20,8 @@ schema_fail() {
 }
 
 schema_dump() {
-    local container="$1" database="$2" output="$3" dump_user="$POSTGRES_USER"\n    [ "$container" != "$SCHEMA_TEMP_CONTAINER" ] || dump_user=postgres
+    local container="$1" database="$2" output="$3" dump_user="$POSTGRES_USER"
+    [ "$container" != "$SCHEMA_TEMP_CONTAINER" ] || dump_user=postgres
     docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$container" pg_dump \
         --schema-only --no-owner --no-privileges \
         --exclude-table=public.escalas_schema_migrations -U "$dump_user" \
