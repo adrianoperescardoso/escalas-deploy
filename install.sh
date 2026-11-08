@@ -81,7 +81,7 @@ main() {
     # alteração no ambiente e apresenta um resumo para confirmação.
     collect_installation_options
 
-    # Remove instalações anteriores que possam interferir
+    # Compara o schema ANTES de parar containers ou modificar a instalacao.\n    preflight_schema_changes\n\n    # Remove instalações anteriores que possam interferir
     # na nova execução.
     cleanup_previous_execution
 
