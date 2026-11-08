@@ -31,6 +31,12 @@ schema_dump() {
     sed -i '/^-- Dumped from database version /d; /^-- Dumped by pg_dump version /d; /^-- PostgreSQL database dump/d; /^-- PostgreSQL database dump complete/d; /^--$/d; /^\\restrict /d; /^\\unrestrict /d' "$output"
 }
 
+
+schema_normalize() {
+    python3 "$BASE_DIR/scripts/core/normalize-schema.py" "$1" "$2" \
+        || schema_fail "Falha ao normalizar dump do PostgreSQL."
+}
+
 schema_reference_prepare() {
     SCHEMA_TEMP_DIR=$(mktemp -d /tmp/escalas-schema.XXXXXXXX)
     chmod 700 "$SCHEMA_TEMP_DIR"
@@ -93,7 +99,9 @@ schema_diff_plan() {
     schema_dump "$POSTGRES_CONTAINER_NAME" "$POSTGRES_DB" "$SCHEMA_TEMP_DIR/current.sql"
     schema_dump "$SCHEMA_TEMP_CONTAINER" escalas_schema_ref "$SCHEMA_TEMP_DIR/reference.sql"
 
-    diff -u "$SCHEMA_TEMP_DIR/current.sql" "$SCHEMA_TEMP_DIR/reference.sql" \
+    schema_normalize "$SCHEMA_TEMP_DIR/current.sql" "$SCHEMA_TEMP_DIR/current.normalized.sql"
+    schema_normalize "$SCHEMA_TEMP_DIR/reference.sql" "$SCHEMA_TEMP_DIR/reference.normalized.sql"
+    diff -u "$SCHEMA_TEMP_DIR/current.normalized.sql" "$SCHEMA_TEMP_DIR/reference.normalized.sql" \
         > "$SCHEMA_TEMP_DIR/schema.diff" || true
 }
 
@@ -117,8 +125,9 @@ schema_validate_plan_in_sandbox() {
         >/dev/null || schema_fail "Plano SQL nao executou no sandbox. Revisao tecnica obrigatoria."
 
     schema_dump "$SCHEMA_TEMP_CONTAINER" "$scratch_db" "$SCHEMA_TEMP_DIR/validated.sql"
-    if ! diff -q "$SCHEMA_TEMP_DIR/validated.sql" "$SCHEMA_TEMP_DIR/reference.sql" >/dev/null; then
-        diff -u "$SCHEMA_TEMP_DIR/validated.sql" "$SCHEMA_TEMP_DIR/reference.sql" || true
+    schema_normalize "$SCHEMA_TEMP_DIR/validated.sql" "$SCHEMA_TEMP_DIR/validated.normalized.sql"
+    if ! diff -q "$SCHEMA_TEMP_DIR/validated.normalized.sql" "$SCHEMA_TEMP_DIR/reference.normalized.sql" >/dev/null; then
+        diff -u "$SCHEMA_TEMP_DIR/validated.normalized.sql" "$SCHEMA_TEMP_DIR/reference.normalized.sql" || true
         schema_fail "Plano nao reproduz o schema integral da release no sandbox. Atualizacao bloqueada."
     fi
     log "Plano validado no sandbox: schemas equivalentes apos aplicacao."
@@ -137,6 +146,7 @@ preflight_schema_changes() {
 
     source "$APP_DIR/.env"
     command -v docker >/dev/null 2>&1 || schema_fail "Docker nao encontrado."
+    command -v python3 >/dev/null 2>&1 || schema_fail "Python3 necessario para normalizacao de schemas."
     [ "$(docker inspect -f '{{.State.Running}}' "$POSTGRES_CONTAINER_NAME" 2>/dev/null)" = "true" ] \
         || schema_fail "Container do PostgreSQL deve estar ativo para comparar os schemas."
 
@@ -169,7 +179,7 @@ preflight_schema_changes() {
 
     # O plano deve cobrir o delta; se nao houver statements, ha
     # objetos nao tratados e nao podemos atualizar silenciosamente.
-    if ! grep -Eq 'Statement [0-9]+' "$SCHEMA_TEMP_DIR/migration.sql"; then
+    if ! grep -Ev '^[[:space:]]*(--|$)' "$SCHEMA_TEMP_DIR/migration.sql" | grep -q ';'; then
         schema_fail "Diferencas encontradas, mas o motor nao gerou um plano. Revisao tecnica obrigatoria."
     fi
 
