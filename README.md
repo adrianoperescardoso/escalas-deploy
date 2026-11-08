@@ -283,13 +283,16 @@ da limpeza de contêineres e antes do build da aplicação:
    de constraints `NOT NULL` **quando a obrigatoriedade é a mesma**.
 5. Compara os dumps normalizados, incluindo tabelas, colunas, chaves,
    índices, views, funções, triggers e demais DDL exportados.
-6. Gera plano SQL usando `pg-schema-diff` v1.0.9.
-7. Valida o plano em um banco temporário, exigindo que a estrutura resultante
+6. Replica no PostgreSQL temporário as roles auxiliares (sem login) e as ACLs
+   reais extraídas do banco atual, sem modificar permissões no banco existente.
+7. Gera plano SQL usando `pg-schema-diff` v1.0.9, sem operações concorrentes
+   de índice, bloqueando qualquer `GRANT`, `REVOKE` ou alteração de ACL.
+8. Valida o plano em um banco temporário, exigindo que a estrutura resultante
    seja equivalente à referência após normalização.
-8. Exibe as diferenças e o plano gerado e solicita autorização explícita.
-9. Se autorizado, arquiva o plano em `/opt/escalas/logs/migrations/`,
+9. Exibe as diferenças e o plano gerado e solicita autorização explícita.
+10. Se autorizado, arquiva o plano em `/opt/escalas/logs/migrations/`,
    aplica a migração em transação e confere novamente o schema final.
-10. Se recusado ou se não conseguir gerar/validar o plano, bloqueia o deploy.
+11. Se recusado ou se não conseguir gerar/validar o plano, bloqueia o deploy.
 
 A normalização **não ignora** mudanças de obrigatoriedade: somente remove
 o nome opcional de `CONSTRAINT ... NOT NULL` nos dumps para comparação.
@@ -304,3 +307,10 @@ em homologação antes de qualquer uso em produção.
 **Segurança:** fazer backup recuperável antes de autorizar mudanças. A
 validação em schema vazio não reproduz os riscos dos dados existentes.
 A ferramenta e o fluxo completo ainda exigem testes reais no servidor.
+
+**Homologação ACL (V1.0.6 → V1.0.7):** comparação inicial gerava `REVOKE SELECT`
+para o usuário `escalas_backup`, pois o backup de referência foi restaurado
+sem ACLs. Após reproduzir no PostgreSQL temporário a role e os `GRANT SELECT`
+existentes, o plano passou a propor somente o `ALTER TABLE turnos.turnossigla`
+(e o `ANALYZE` subsequente). A cópia automatizada dessas ACLs ainda deve ser
+testada ponta a ponta antes de autorizar instalação.
