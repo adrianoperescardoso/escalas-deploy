@@ -132,9 +132,9 @@ o código escolhido para testes.
 As referências aos artefatos ficam em `scripts/core/config.sh`. Ao publicar
 uma nova release, atualize os dois valores juntos:
 
--   `RELEASE_VERSION`: tag exata da release no GitHub (atualmente `V1.0.5`).
+-   `RELEASE_VERSION`: tag exata da release no GitHub (atualmente `V1.0.6`).
 -   `APPLICATION_PACKAGE_NAME`: nome exato do ZIP anexado à release
-    (atualmente `DeploymentUnit1_20261002085456.zip`).
+    (atualmente `DeploymentUnit1_20261009143015.zip`).
 
 O nome do ZIP também define o arquivo local usado pelo instalador. Use o
 nome do novo pacote para que o ZIP anterior não seja reaproveitado.
@@ -269,42 +269,38 @@ Ao término da instalação o ambiente estará preparado com:
 -   [ ] HTTPS
 
 
-## Migrations SQL
+## Comparação integral do schema e migração assistida
 
-O instalador executa os arquivos `migrations/*.sql` em ordem alfabética
-depois da restauração opcional do PostgreSQL e antes da preparação da aplicação.
-O nome deve seguir `NNNN_descricao.sql` (ex.: `0001_ampliar_sigla_turnos.sql`).
+Ao atualizar uma instalação existente **preservando o banco**, o instalador:
 
-A tabela `public.escalas_schema_migrations` registra nome, SHA-256 e data
-de aplicação. Uma migration já registrada não é reaplicada; se seu conteúdo
-for alterado, a instalação é interrompida. Cada migration nova executa em
-transação única juntamente com o registro da execução. Um erro provoca rollback
-e impede iniciar a nova versão da aplicação.
+1. Baixa `Escalas.backup` da versão definida em `BACKUP_RELEASE_VERSION`.
+2. Inicia um PostgreSQL 17 **temporário e isolado** no namespace de rede do
+   container atual, usando a porta 5433 apenas internamente.
+3. Restaura **somente a estrutura** desse backup no PostgreSQL temporário.
+4. Extrai os schemas completos com `pg_dump --schema-only`, sem ownership e
+   privilégios, e apresenta o diff completo.
+5. Usa `pg-schema-diff` da Stripe, fixado na versão 1.0.9, para gerar o plano SQL.
+6. Bloqueia automaticamente operações destrutivas ou não transacionais detectadas.
+7. Testa o plano em um clone estrutural descartável do banco atual e exige
+   equivalência com o schema do backup.
+8. Apresenta as diferenças e o SQL e solicita confirmação explícita.
+9. Se autorizado, aplica o plano em transação única e verifica o schema final.
+10. Se recusado ou se a ferramenta não cobrir todo o delta, interrompe antes
+    de alterar o banco existente.
 
-**V1.0.7:** `0001_ampliar_sigla_turnos.sql` amplia
-`public.turnos.turnossigla` para `varchar(4)`, preservando os registros.
+Arquivos: `scripts/steps/00-schema-preflight.sh`,
+`scripts/steps/06a-run-migrations.sh` e
+`docker/schema-diff/Dockerfile`.
 
-Em atualizações de produção, preserve o banco existente ao responder **N**
-à pergunta sobre nova instalação do banco. Faça um backup verificado antes
-de aplicar migrações. Arquivos SQL já publicados nunca devem ser editados:
-crie uma nova migration para alterações subsequentes.
+**Limitações e cuidados:** nem todo objeto do PostgreSQL é suportado pelo
+gerador automático. O diff textual de `pg_dump` captura divergências que
+o gerador não sabe resolver, e a verificação no sandbox bloqueia o deploy
+nesses casos. A execução real ainda pode falhar por restrições ou dados
+existentes; antes de atualizar produção, crie e teste um backup recuperável.
+Alterações não transacionais e potencialmente destrutivas requerem revisão
+técnica. O plano de homologação deve cobrir novas instalações, bancos
+atualizados, recusa do operador, schemas divergentes e falha de SQL.
 
-## Comparacao estrutural antes da atualizacao
-
-Em atualizacoes que preservam dados, o instalador consulta **antes da limpeza**
-a estrutura do PostgreSQL existente e compara com a regra de schema versionada.
-Nesta fase a comparacao automatica cobre **somente**
-`public.turnos.turnossigla`, cujo tipo exigido e `varchar(4)`.
-Nao se trata de comparacao integral de todos os objetos do banco.
-
-- Se o campo ja for `varchar(4)`, segue sem alterar o banco.
-- Se for `varchar(2)`, mostra a diferenca e solicita aprovacao explicita.
-- Se o usuario recusar, interrompe antes de alterar containers ou aplicar SQL.
-- Se encontrar tipo inesperado ou coluna ausente, interrompe sem tentar corrigir.
-- Se autorizado, executa a migration em transacao, registra historico
-  e verifica novamente o tipo antes de continuar o build.
-- Se o usuario escolher restaurar o banco, valida o schema apos o restore;
-  o backup fornecido deve conter a estrutura compativel.
-
-**Seguranca:** realize backup recuperavel antes de autorizar. A verificacao
-nao cobre outras mudancas de schema; elas exigem regras e scripts revisados.
+Se optar por restaurar o backup no próprio ambiente, a comparação com o
+banco anterior é ignorada, pois o banco será substituído conforme a escolha
+do usuário. Este procedimento requer cuidado especial com os dados existentes.
