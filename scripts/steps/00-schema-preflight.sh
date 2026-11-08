@@ -20,9 +20,11 @@ schema_fail() {
 }
 
 schema_dump() {
-    local container="$1" database="$2" output="$3"
-    docker exec "$container" pg_dump -X --schema-only --no-owner --no-privileges \
-        --exclude-table=public.escalas_schema_migrations -U postgres -d "$database" \
+    local container="$1" database="$2" output="$3" dump_user="$POSTGRES_USER"\n    [ "$container" != "$SCHEMA_TEMP_CONTAINER" ] || dump_user=postgres
+    docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$container" pg_dump \
+        --schema-only --no-owner --no-privileges \
+        --exclude-table=public.escalas_schema_migrations -U "$dump_user" \
+        -h 127.0.0.1 -p "$( [ "$container" = "$SCHEMA_TEMP_CONTAINER" ] && echo "$SCHEMA_PORT" || echo 5432 )" -d "$database" \
         > "$output" || schema_fail "Falha ao extrair o schema de $database."
     # Cabecalhos e versoes da ferramenta nao fazem parte da estrutura.
     sed -i '/^-- Dumped from database version /d; /^-- Dumped by pg_dump version /d; /^-- PostgreSQL database dump/d; /^-- PostgreSQL database dump complete/d; /^--$/d' "$output"
@@ -61,7 +63,7 @@ schema_reference_prepare() {
         >/dev/null 2>&1 || schema_fail "PostgreSQL de referencia nao iniciou."
 
     log "Restaurando SOMENTE a estrutura do backup no banco temporario..."
-    docker exec -i "$SCHEMA_TEMP_CONTAINER" \
+    docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" "$SCHEMA_TEMP_CONTAINER" \
         pg_restore --exit-on-error --schema-only --no-owner --no-privileges \
         -h 127.0.0.1 -p "$SCHEMA_PORT" -U postgres -d escalas_schema_ref \
         < "$SCHEMA_TEMP_DIR/Escalas.backup" \
