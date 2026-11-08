@@ -77,6 +77,57 @@ schema_reference_prepare() {
         || schema_fail "Restauracao do schema de referencia falhou."
 }
 
+
+# Reproduz ACLs existentes no banco de referencia, sem conceder privilegios
+# extras e sem alterar roles/ACLs do PostgreSQL original.
+schema_sync_reference_acl() {
+    local role_sql="$SCHEMA_TEMP_DIR/reference-roles.sql"
+    local acl_dump="$SCHEMA_TEMP_DIR/source-with-acl.sql"
+    local acl_sql="$SCHEMA_TEMP_DIR/reference-acl.sql"
+
+    log "Sincronizando permissoes existentes somente no banco temporario..."
+
+    # Roles globais nao fazem parte do pg_dump. Cria equivalentes NOLOGIN
+    # no cluster temporario; nomes sao escapados pelo format(%I).
+    docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$POSTGRES_CONTAINER_NAME" \
+        psql -X -A -t -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+        -h 127.0.0.1 -p 5432 -c \
+        "SELECT format('CREATE ROLE %I NOLOGIN;', rolname) FROM pg_roles WHERE rolname <> 'postgres' AND rolname !~ '^pg_' ORDER BY rolname;" \
+        > "$role_sql" || schema_fail "Falha ao consultar roles do banco atual."
+
+    if [ -s "$role_sql" ]; then
+        docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" "$SCHEMA_TEMP_CONTAINER" \
+            psql -X -v ON_ERROR_STOP=1 -1 -U postgres -d escalas_schema_ref \
+            -h 127.0.0.1 -p "$SCHEMA_PORT" < "$role_sql" >/dev/null \
+            || schema_fail "Falha ao criar roles auxiliares no banco temporario."
+    fi
+
+    # Diferente do schema_dump, esta exportacao inclui grants/revokes.
+    # Nao usa --no-privileges.
+    docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$POSTGRES_CONTAINER_NAME" \
+        pg_dump --schema-only --no-owner \
+        --exclude-table=public.escalas_schema_migrations \
+        -U "$POSTGRES_USER" -d "$POSTGRES_DB" -h 127.0.0.1 -p 5432 \
+        > "$acl_dump" || schema_fail "Falha ao extrair permissoes do banco atual."
+
+    # ACLs emitidas pelo pg_dump sao instrucoes SQL independentes.
+    # Falha fechado se aparecer um formato inesperado/multilinha.
+    awk '
+        /^(GRANT |REVOKE |ALTER DEFAULT PRIVILEGES )/ {
+            if ($0 !~ /;[[:space:]]*$/) exit 42;
+            print;
+        }
+    ' "$acl_dump" > "$acl_sql" \
+        || schema_fail "ACL com formato inesperado; atualizacao bloqueada."
+
+    if [ -s "$acl_sql" ]; then
+        docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" "$SCHEMA_TEMP_CONTAINER" \
+            psql -X -v ON_ERROR_STOP=1 -1 -U postgres -d escalas_schema_ref \
+            -h 127.0.0.1 -p "$SCHEMA_PORT" < "$acl_sql" >/dev/null \
+            || schema_fail "Falha ao reproduzir ACLs no banco temporario. Banco original preservado."
+    fi
+}
+
 schema_diff_plan() {
     local cli_image="escalas-pg-schema-diff:1.0.9"
     local from_dsn to_dsn temp_dsn
@@ -91,7 +142,7 @@ schema_diff_plan() {
     # A validacao do plano usa bancos descartaveis no PostgreSQL temporario.
     docker run --rm --network "container:$POSTGRES_CONTAINER_NAME" "$cli_image" \
         plan --from-dsn "$from_dsn" --to-dsn "$to_dsn" --temp-db-dsn "$temp_dsn" \
-        --output-format sql > "$SCHEMA_TEMP_DIR/migration.sql" \
+        --output-format sql --no-concurrent-index-ops > "$SCHEMA_TEMP_DIR/migration.sql" \
         || schema_fail "Falha ao gerar plano completo de diferencas."
 
     # Dumps integrais capturam inclusive objetos nao suportados pelo motor
@@ -153,6 +204,7 @@ preflight_schema_changes() {
     # Garante remocao de container e arquivos temporarios tambem em recusas/erros.
     trap schema_cleanup EXIT
     schema_reference_prepare
+    schema_sync_reference_acl
     schema_diff_plan
 
     echo
@@ -181,6 +233,11 @@ preflight_schema_changes() {
     # objetos nao tratados e nao podemos atualizar silenciosamente.
     if ! grep -Ev '^[[:space:]]*(--|$)' "$SCHEMA_TEMP_DIR/migration.sql" | grep -q ';'; then
         schema_fail "Diferencas encontradas, mas o motor nao gerou um plano. Revisao tecnica obrigatoria."
+    fi
+
+    # ACLs do destino devem permanecer intocadas: nunca aplicar GRANT/REVOKE.
+    if grep -Eiq '^[[:space:]]*(GRANT|REVOKE|ALTER[[:space:]]+DEFAULT[[:space:]]+PRIVILEGES)[[:space:]]' "$SCHEMA_TEMP_DIR/migration.sql"; then
+        schema_fail "Plano altera permissoes. Atualizacao bloqueada para proteger acessos e backups."
     fi
 
     # Em modo automatico somente comandos transacionais e nao destrutivos.
