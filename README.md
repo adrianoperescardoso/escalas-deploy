@@ -43,7 +43,8 @@ install.sh
    ├── PostgreSQL
    ├── Download dos artefatos
    ├── Decisão e restauração opcional do banco
-   ├── Migrations SQL versionadas\n   ├── Preparação da aplicação
+   ├── Migrations SQL versionadas
+   ├── Preparação da aplicação
    ├── Build da imagem Docker
    ├── Docker Compose
    ├── Inicialização da aplicação
@@ -63,7 +64,8 @@ install.sh
        05 Teste de conexão com o banco
        06 Download dos artefatos
        07 Restauração opcional do banco de dados
-       08 Execução de migrations SQL\n       09 Preparação da aplicação
+       08 Execução de migrations SQL
+       09 Preparação da aplicação
        09 Build da imagem Docker
        10 Configuração do Docker Compose
        11 Inicialização da aplicação
@@ -271,36 +273,34 @@ Ao término da instalação o ambiente estará preparado com:
 
 ## Comparação integral do schema e migração assistida
 
-Ao atualizar uma instalação existente **preservando o banco**, o instalador:
+Na atualização com preservação de dados, o instalador executa a análise antes
+da limpeza de contêineres e antes do build da aplicação:
 
-1. Baixa `Escalas.backup` da versão definida em `BACKUP_RELEASE_VERSION`.
-2. Inicia um PostgreSQL 17 **temporário e isolado** no namespace de rede do
-   container atual, usando a porta 5433 apenas internamente.
-3. Restaura **somente a estrutura** desse backup no PostgreSQL temporário.
-4. Extrai os schemas completos com `pg_dump --schema-only`, sem ownership e
-   privilégios, e apresenta o diff completo.
-5. Usa `pg-schema-diff` da Stripe, fixado na versão 1.0.9, para gerar o plano SQL.
-6. Bloqueia automaticamente operações destrutivas ou não transacionais detectadas.
-7. Testa o plano em um clone estrutural descartável do banco atual e exige
-   equivalência com o schema do backup.
-8. Apresenta as diferenças e o SQL e solicita confirmação explícita.
-9. Se autorizado, arquiva o plano e o diff em\n   `/opt/escalas/logs/migrations/`, aplica o SQL em transação única e verifica\n   o schema final.
-10. Se recusado ou se a ferramenta não cobrir todo o delta, interrompe antes
-    de alterar o banco existente.
+1. Obtém o backup `Escalas.backup` configurado para a release.
+2. Restaura apenas seu schema em PostgreSQL 17 temporário, isolado em dados.
+3. Exporta os schemas completos do banco atual e do banco de referência.
+4. Normaliza exclusivamente cabeçalhos variáveis dos dumps e nomes explícitos
+   de constraints `NOT NULL` **quando a obrigatoriedade é a mesma**.
+5. Compara os dumps normalizados, incluindo tabelas, colunas, chaves,
+   índices, views, funções, triggers e demais DDL exportados.
+6. Gera plano SQL usando `pg-schema-diff` v1.0.9.
+7. Valida o plano em um banco temporário, exigindo que a estrutura resultante
+   seja equivalente à referência após normalização.
+8. Exibe as diferenças e o plano gerado e solicita autorização explícita.
+9. Se autorizado, arquiva o plano em `/opt/escalas/logs/migrations/`,
+   aplica a migração em transação e confere novamente o schema final.
+10. Se recusado ou se não conseguir gerar/validar o plano, bloqueia o deploy.
 
-Arquivos: `scripts/steps/00-schema-preflight.sh`,
-`scripts/steps/06a-run-migrations.sh` e
-`docker/schema-diff/Dockerfile`.
+A normalização **não ignora** mudanças de obrigatoriedade: somente remove
+o nome opcional de `CONSTRAINT ... NOT NULL` nos dumps para comparação.
+Os dumps brutos permanecem intactos para testes e restauração temporária.
 
-**Limitações e cuidados:** nem todo objeto do PostgreSQL é suportado pelo
-gerador automático. O diff textual de `pg_dump` captura divergências que
-o gerador não sabe resolver, e a verificação no sandbox bloqueia o deploy
-nesses casos. A execução real ainda pode falhar por restrições ou dados
-existentes; antes de atualizar produção, crie e teste um backup recuperável.
-Alterações não transacionais e potencialmente destrutivas requerem revisão
-técnica. O plano de homologação deve cobrir novas instalações, bancos
-atualizados, recusa do operador, schemas divergentes e falha de SQL.
+**Limitação:** o motor SQL não suporta todas as alterações possíveis do
+PostgreSQL. Nessas situações o deploy deverá falhar, sem considerar schemas
+diferentes como equivalentes. O sistema foi preparado para PostgreSQL 17;
+o backup V1.0.7 foi gerado pelo PostgreSQL 18.4, portanto requer validação
+em homologação antes de qualquer uso em produção.
 
-Se optar por restaurar o backup no próprio ambiente, a comparação com o
-banco anterior é ignorada, pois o banco será substituído conforme a escolha
-do usuário. Este procedimento requer cuidado especial com os dados existentes.
+**Segurança:** fazer backup recuperável antes de autorizar mudanças. A
+validação em schema vazio não reproduz os riscos dos dados existentes.
+A ferramenta e o fluxo completo ainda exigem testes reais no servidor.
