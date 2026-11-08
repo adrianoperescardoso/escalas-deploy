@@ -28,7 +28,7 @@ schema_dump() {
         -h 127.0.0.1 -p "$( [ "$container" = "$SCHEMA_TEMP_CONTAINER" ] && echo "$SCHEMA_PORT" || echo 5432 )" -d "$database" \
         > "$output" || schema_fail "Falha ao extrair o schema de $database."
     # Cabecalhos e versoes da ferramenta nao fazem parte da estrutura.
-    sed -i '/^-- Dumped from database version /d; /^-- Dumped by pg_dump version /d; /^-- PostgreSQL database dump/d; /^-- PostgreSQL database dump complete/d; /^--$/d; /^\\\\restrict /d; /^\\\\unrestrict /d' "$output"
+    sed -i '/^-- Dumped from database version /d; /^-- Dumped by pg_dump version /d; /^-- PostgreSQL database dump/d; /^-- PostgreSQL database dump complete/d; /^--$/d; /^\\restrict /d; /^\\unrestrict /d' "$output"
 }
 
 schema_reference_prepare() {
