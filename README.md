@@ -43,7 +43,7 @@ install.sh
    ├── PostgreSQL
    ├── Download dos artefatos
    ├── Decisão e restauração opcional do banco
-   ├── Preparação da aplicação
+   ├── Migrations SQL versionadas\n   ├── Preparação da aplicação
    ├── Build da imagem Docker
    ├── Docker Compose
    ├── Inicialização da aplicação
@@ -63,7 +63,7 @@ install.sh
        05 Teste de conexão com o banco
        06 Download dos artefatos
        07 Restauração opcional do banco de dados
-       08 Preparação da aplicação
+       08 Execução de migrations SQL\n       09 Preparação da aplicação
        09 Build da imagem Docker
        10 Configuração do Docker Compose
        11 Inicialização da aplicação
@@ -267,3 +267,24 @@ Ao término da instalação o ambiente estará preparado com:
 -   [ ] Rollback
 -   [ ] Health Check
 -   [ ] HTTPS
+
+
+## Migrations SQL
+
+O instalador executa os arquivos `migrations/*.sql` em ordem alfabética
+depois da restauração opcional do PostgreSQL e antes da preparação da aplicação.
+O nome deve seguir `NNNN_descricao.sql` (ex.: `0001_ampliar_sigla_turnos.sql`).
+
+A tabela `public.escalas_schema_migrations` registra nome, SHA-256 e data
+de aplicação. Uma migration já registrada não é reaplicada; se seu conteúdo
+for alterado, a instalação é interrompida. Cada migration nova executa em
+transação única juntamente com o registro da execução. Um erro provoca rollback
+e impede iniciar a nova versão da aplicação.
+
+**V1.0.7:** `0001_ampliar_sigla_turnos.sql` amplia
+`public.turnos.turnossigla` para `varchar(4)`, preservando os registros.
+
+Em atualizações de produção, preserve o banco existente ao responder **N**
+à pergunta sobre nova instalação do banco. Faça um backup verificado antes
+de aplicar migrações. Arquivos SQL já publicados nunca devem ser editados:
+crie uma nova migration para alterações subsequentes.
