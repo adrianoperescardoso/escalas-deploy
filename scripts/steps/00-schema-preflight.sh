@@ -1,66 +1,155 @@
 #!/bin/bash
-# Analise sem alteracoes no banco, executada antes de parar containers.
-# A referencia atual abrange public.turnos.turnossigla; outras colunas
-# so entram no controle quando forem adicionadas explicitamente.
+# ============================================================
+# Escalas Deploy - comparacao integral de schemas PostgreSQL
+# Referencia: Escalas.backup da release atual.
+# Analise ocorre ANTES de cleanup, build ou alteracoes no banco.
+# ============================================================
 
-get_turnos_sigla_type() {
-    local env_file="$APP_DIR/.env"
-    [ -f "$env_file" ] || erro "Configuracao do banco nao encontrada: $env_file"
-    source "$env_file"
-
-    local type
-    if ! type=$(docker exec "$POSTGRES_CONTAINER_NAME" \
-        psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atqc \
-        "SELECT data_type || ':' || character_maximum_length
-           FROM information_schema.columns
-          WHERE table_schema='public' AND table_name='turnos'
-            AND column_name='turnossigla'"); then
-        erro "Nao foi possivel consultar a estrutura do PostgreSQL existente."
+schema_cleanup() {
+    if [ -n "$SCHEMA_TEMP_CONTAINER" ]; then
+        docker rm -f "$SCHEMA_TEMP_CONTAINER" >/dev/null 2>&1 || true
     fi
-    printf '%s' "$type"
+    if [ -n "$SCHEMA_TEMP_DIR" ]; then
+        rm -rf "$SCHEMA_TEMP_DIR"
+    fi
+}
+
+schema_fail() {
+    echo "ERRO: $*" >&2
+    exit 1
+}
+
+schema_dump() {
+    local container="$1" database="$2" output="$3"
+    docker exec "$container" pg_dump -X --schema-only --no-owner --no-privileges \
+        --exclude-table=public.escalas_schema_migrations -U postgres -d "$database" \
+        > "$output" || schema_fail "Falha ao extrair o schema de $database."
+    # Cabecalhos e versoes da ferramenta nao fazem parte da estrutura.
+    sed -i '/^-- Dumped from database version /d; /^-- Dumped by pg_dump version /d; /^-- PostgreSQL database dump/d; /^-- PostgreSQL database dump complete/d; /^--$/d' "$output"
+}
+
+schema_reference_prepare() {
+    SCHEMA_TEMP_DIR=$(mktemp -d /tmp/escalas-schema.XXXXXXXX)
+    chmod 700 "$SCHEMA_TEMP_DIR"
+    SCHEMA_TEMP_CONTAINER="escalas-schema-$BASHPID"
+    SCHEMA_PORT=5433
+
+    log "Baixando backup de referencia da release $BACKUP_RELEASE_VERSION..."
+    wget -q -O "$SCHEMA_TEMP_DIR/Escalas.backup" "$BACKUP_DOWNLOAD_URL" \
+        || schema_fail "Nao foi possivel baixar $BACKUP_DOWNLOAD_URL"
+    [ -s "$SCHEMA_TEMP_DIR/Escalas.backup" ] || schema_fail "Backup de referencia vazio."
+
+    # Compartilha somente o namespace de rede com o container existente.
+    # Os dados e o processo do PostgreSQL temporario sao independentes.
+    docker run -d --rm --name "$SCHEMA_TEMP_CONTAINER" \
+        --network "container:$POSTGRES_CONTAINER_NAME" \
+        -e POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+        -e POSTGRES_DB=escalas_schema_ref \
+        postgres:17 -c port="$SCHEMA_PORT" -c listen_addresses=127.0.0.1 \
+        >/dev/null || schema_fail "Falha ao iniciar PostgreSQL temporario."
+
+    local attempt
+    for attempt in $(seq 1 45); do
+        if docker exec "$SCHEMA_TEMP_CONTAINER" \
+            pg_isready -h 127.0.0.1 -p "$SCHEMA_PORT" -U postgres -d escalas_schema_ref >/dev/null 2>&1; then
+            break
+        fi
+        sleep 2
+    done
+    docker exec "$SCHEMA_TEMP_CONTAINER" \
+        pg_isready -h 127.0.0.1 -p "$SCHEMA_PORT" -U postgres -d escalas_schema_ref \
+        >/dev/null 2>&1 || schema_fail "PostgreSQL de referencia nao iniciou."
+
+    log "Restaurando SOMENTE a estrutura do backup no banco temporario..."
+    docker exec -i "$SCHEMA_TEMP_CONTAINER" \
+        pg_restore --exit-on-error --schema-only --no-owner --no-privileges \
+        -h 127.0.0.1 -p "$SCHEMA_PORT" -U postgres -d escalas_schema_ref \
+        < "$SCHEMA_TEMP_DIR/Escalas.backup" \
+        || schema_fail "Restauracao do schema de referencia falhou."
+}
+
+schema_diff_plan() {
+    local cli_image="escalas-pg-schema-diff:1.0.9"
+    local from_dsn to_dsn temp_dsn
+    from_dsn="host=127.0.0.1 port=5432 dbname=$POSTGRES_DB user=$POSTGRES_USER password=$POSTGRES_PASSWORD sslmode=disable"
+    to_dsn="host=127.0.0.1 port=$SCHEMA_PORT dbname=escalas_schema_ref user=postgres password=$POSTGRES_PASSWORD sslmode=disable"
+    temp_dsn="host=127.0.0.1 port=$SCHEMA_PORT dbname=postgres user=postgres password=$POSTGRES_PASSWORD sslmode=disable"
+
+    docker image inspect "$cli_image" >/dev/null 2>&1 || \
+        docker build -q -t "$cli_image" -f "$BASE_DIR/docker/schema-diff/Dockerfile" "$BASE_DIR/docker/schema-diff" \
+        >/dev/null || schema_fail "Nao foi possivel preparar a ferramenta pg-schema-diff."
+
+    # A validacao do plano usa bancos descartaveis no PostgreSQL temporario.
+    docker run --rm --network "container:$POSTGRES_CONTAINER_NAME" "$cli_image" \
+        plan --from-dsn "$from_dsn" --to-dsn "$to_dsn" --temp-db-dsn "$temp_dsn" \
+        --output-format sql > "$SCHEMA_TEMP_DIR/migration.sql" \
+        || schema_fail "Falha ao gerar plano completo de diferencas."
+
+    # Dumps integrais capturam inclusive objetos nao suportados pelo motor
+    # de migration. Nesse caso, falhar fechado em vez de prosseguir.
+    schema_dump "$POSTGRES_CONTAINER_NAME" "$POSTGRES_DB" "$SCHEMA_TEMP_DIR/current.sql"
+    schema_dump "$SCHEMA_TEMP_CONTAINER" escalas_schema_ref "$SCHEMA_TEMP_DIR/reference.sql"
+
+    diff -u "$SCHEMA_TEMP_DIR/current.sql" "$SCHEMA_TEMP_DIR/reference.sql" \
+        > "$SCHEMA_TEMP_DIR/schema.diff" || true
 }
 
 preflight_schema_changes() {
     SCHEMA_MIGRATION_APPROVED=false
+    SCHEMA_HAS_DIFFERENCES=false
+    SCHEMA_TEMP_DIR=""
+    SCHEMA_TEMP_CONTAINER=""
 
-    # A primeira instalacao / restauracao sera validada depois do restore.
     if [ "$RESTORE_DATABASE" = true ]; then
-        log "Restauracao selecionada: a estrutura do backup sera conferida apos o restore."
+        log "Backup sera restaurado: comparacao do banco anterior nao se aplica."
         return
     fi
 
-    command -v docker >/dev/null || erro "Docker indisponivel para comparar o banco existente."
-    local existing_type
-    existing_type=$(get_turnos_sigla_type)
+    source "$APP_DIR/.env"
+    command -v docker >/dev/null 2>&1 || schema_fail "Docker nao encontrado."
+    [ "$(docker inspect -f '{{.State.Running}}' "$POSTGRES_CONTAINER_NAME" 2>/dev/null)" = "true" ] \
+        || schema_fail "Container do PostgreSQL deve estar ativo para comparar os schemas."
+
+    # Garante remocao de container e arquivos temporarios tambem em recusas/erros.
+    trap schema_cleanup EXIT
+    schema_reference_prepare
+    schema_diff_plan
 
     echo
-    echo "=============================================="
-    echo " Comparacao estrutural - versao $RELEASE_VERSION"
-    echo "=============================================="
+    echo "======================================================"
+    echo " Comparacao integral de schemas - $RELEASE_VERSION"
+    echo "======================================================"
+    echo "Referencia : $BACKUP_RELEASE_VERSION / $BACKUP_FILE_NAME"
+    echo "Destino    : $POSTGRES_DB ($POSTGRES_CONTAINER_NAME)"
+    echo
 
-    case "$existing_type" in
-        "character varying:4")
-            echo "public.turnos.turnossigla: varchar(4) - compativel."
-            echo "Nenhuma correcao conhecida e necessaria."
-            ;;
-        "character varying:2")
-            echo "Foram encontradas diferencas estruturais:"
-            echo "  Tabela: public.turnos"
-            echo "  Coluna: turnossigla"
-            echo "  Atual: varchar(2)"
-            echo "  Necessario: varchar(4)"
-            echo "  Correcao: ampliar o limite, preservando os registros."
-            echo
-            if confirmar "Autoriza corrigir a estrutura do banco antes da atualizacao?"; then
-                SCHEMA_MIGRATION_APPROVED=true
-                log "Correcao estrutural autorizada."
-            else
-                erro "Atualizacao cancelada. A nova versao exige varchar(4) em public.turnos.turnossigla. O banco e a aplicacao existentes nao foram alterados."
-            fi
-            ;;
-        *)
-            erro "Estrutura inesperada em public.turnos.turnossigla: '${existing_type:-coluna inexistente}'. Atualizacao bloqueada para evitar alteracoes nao previstas."
-            ;;
-    esac
-    echo "=============================================="
+    if [ ! -s "$SCHEMA_TEMP_DIR/schema.diff" ]; then
+        echo "Nenhuma diferenca de schema detectada."
+        return
+    fi
+
+    SCHEMA_HAS_DIFFERENCES=true
+    echo "Diferencas estruturais detectadas (diff de pg_dump):"
+    cat "$SCHEMA_TEMP_DIR/schema.diff"
+    echo
+    echo "SQL de migracao proposto:"
+    cat "$SCHEMA_TEMP_DIR/migration.sql"
+
+    # O plano deve cobrir o delta; se nao houver statements, ha
+    # objetos nao tratados e nao podemos atualizar silenciosamente.
+    if ! grep -Eq 'Statement [0-9]+' "$SCHEMA_TEMP_DIR/migration.sql"; then
+        schema_fail "Diferencas encontradas, mas o motor nao gerou um plano. Revisao tecnica obrigatoria."
+    fi
+
+    # Em modo automatico somente comandos transacionais e nao destrutivos.
+    # Operacoes perigosas precisam de tratamento tecnico versionado.
+    if grep -Eiq '(^|[[:space:]])(DROP[[:space:]]+(TABLE|COLUMN|SCHEMA|TYPE)|TRUNCATE|CREATE[[:space:]]+INDEX[[:space:]]+CONCURRENTLY|DROP[[:space:]]+INDEX[[:space:]]+CONCURRENTLY|ALTER[[:space:]]+TYPE[[:space:]].*ADD[[:space:]]+VALUE)' "$SCHEMA_TEMP_DIR/migration.sql"; then
+        schema_fail "Plano contem operacoes destrutivas ou nao transacionais. Revisao tecnica obrigatoria."
+    fi
+
+    if confirmar "Deseja aplicar todas as correcoes estruturais exibidas?"; then
+        SCHEMA_MIGRATION_APPROVED=true
+    else
+        schema_fail "Atualizacao cancelada: o novo release exige as alteracoes exibidas. O banco existente nao foi alterado."
+    fi
 }
