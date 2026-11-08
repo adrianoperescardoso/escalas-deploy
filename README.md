@@ -284,7 +284,7 @@ Ao atualizar uma instalação existente **preservando o banco**, o instalador:
 7. Testa o plano em um clone estrutural descartável do banco atual e exige
    equivalência com o schema do backup.
 8. Apresenta as diferenças e o SQL e solicita confirmação explícita.
-9. Se autorizado, aplica o plano em transação única e verifica o schema final.
+9. Se autorizado, arquiva o plano e o diff em\n   `/opt/escalas/logs/migrations/`, aplica o SQL em transação única e verifica\n   o schema final.
 10. Se recusado ou se a ferramenta não cobrir todo o delta, interrompe antes
     de alterar o banco existente.
 
