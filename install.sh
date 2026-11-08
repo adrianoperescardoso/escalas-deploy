@@ -100,7 +100,7 @@ main() {
         restore_database
     fi
 
-    # A chave do GAM é necessária tanto após uma restauração quanto
+    # Atualiza o esquema antes de preparar/iniciar a nova aplicação.\n    run_database_migrations\n\n    # A chave do GAM é necessária tanto após uma restauração quanto
     # quando o banco existente é preservado.
     configure_gam_connection_key
 
