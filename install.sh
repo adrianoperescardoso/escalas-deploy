@@ -81,7 +81,10 @@ main() {
     # alteração no ambiente e apresenta um resumo para confirmação.
     collect_installation_options
 
-    # Compara o schema ANTES de parar containers ou modificar a instalacao.\n    preflight_schema_changes\n\n    # Remove instalações anteriores que possam interferir
+    # Compara o schema ANTES de parar containers ou modificar a instalacao.
+    preflight_schema_changes
+
+    # Remove instalações anteriores que possam interferir
     # na nova execução.
     cleanup_previous_execution
 
@@ -100,7 +103,10 @@ main() {
         restore_database
     fi
 
-    # Atualiza o esquema antes de preparar/iniciar a nova aplicação.\n    run_database_migrations\n\n    # A chave do GAM é necessária tanto após uma restauração quanto
+    # Atualiza o esquema antes de preparar/iniciar a nova aplicação.
+    run_database_migrations
+
+    # A chave do GAM é necessária tanto após uma restauração quanto
     # quando o banco existente é preservado.
     configure_gam_connection_key
 
