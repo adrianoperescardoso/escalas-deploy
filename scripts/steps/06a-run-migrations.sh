@@ -20,8 +20,9 @@ run_database_migrations() {
         < "$SCHEMA_TEMP_DIR/migration.sql"; then
         erro "Falha ao aplicar plano. Transacao revertida. Atualizacao interrompida."
     fi
-    # Regera a comparacao apos a aplicacao para encontrar diffs remanescentes.
-    schema_diff_plan
+    # Compara novamente todo o schema, sem depender do sandbox removido.
+    schema_dump "$POSTGRES_CONTAINER_NAME" "$POSTGRES_DB" "$SCHEMA_TEMP_DIR/current-after.sql"
+    diff -u "$SCHEMA_TEMP_DIR/current-after.sql" "$SCHEMA_TEMP_DIR/reference.sql" > "$SCHEMA_TEMP_DIR/schema.diff" || true
     if [ -s "$SCHEMA_TEMP_DIR/schema.diff" ]; then
         echo "Ainda ha diferencas estruturais:"
         cat "$SCHEMA_TEMP_DIR/schema.diff"
